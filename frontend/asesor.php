@@ -141,7 +141,7 @@ main { padding: 28px; min-width: 0; display: flex; flex-direction: column; }
   cursor: pointer; font-size: 11px; font-weight: 700;
 }
 .btn-client-card {
-  background: white; color: var(--navy);
+  background: white; color: var(--loyaltel-blue);
   border: 2px solid var(--loyaltel-blue);
   padding: 10px 18px;
   font-weight: 700;
