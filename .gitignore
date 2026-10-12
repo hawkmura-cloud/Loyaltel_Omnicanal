@@ -12,6 +12,7 @@ yarn.lock
 .env.*.local
 .env.test
 .env.production
+.env.docker
 
 # Database
 *.sql
