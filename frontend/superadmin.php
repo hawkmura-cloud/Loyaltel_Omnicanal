@@ -1365,5 +1365,9 @@ async function deleteCampaign(id) {
 
 checkAuth();
 </script>
+
+<footer style="margin-top: auto; padding: 20px; text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
+  Loyaltel Contact Center Platform © 2026 - Desarrollado por Paulo Tenorio
+</footer>
 </body>
 </html>
