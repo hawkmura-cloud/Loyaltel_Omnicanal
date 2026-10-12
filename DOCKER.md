@@ -109,34 +109,8 @@ Las credenciales de Supabase están guardadas en `backend/.env.production` como 
 
 1. **Base de datos:** MySQL está en contenedor Docker, datos persisten en volumen
 2. **Variables de entorno:** Configuradas en docker-compose.yml y .env.production
-3. **SSL:** Para producción, necesitarás configurar SSL/HTTPS en EasyPanel
+3. **SSL:** Para producción, necesitarás configurar SSL/HTTPS con un proxy reverso (nginx/caddy)
 4. **Superadmin:** Usuario: `superadmin`, Contraseña: `superadmin123`
-
----
-
-## 🚢 Despliegue en EasyPanel
-
-### Paso 1: Configurar el servidor
-
-1. Asegúrate de tener Docker y Docker Compose instalados en el servidor
-2. Clona el repositorio en el servidor:
-   ```bash
-   git clone https://github.com/hawkmura-cloud/claro-chatbot.git
-   cd claro-chatbot
-   ```
-
-### Paso 2: EasyPanel
-
-1. Crea un proyecto en EasyPanel
-2. Añade servicio de tipo "Docker Compose"
-3. Sube el archivo docker-compose.yml
-4. Configura dominio y SSL (si aplica)
-5. Inicia el servicio
-
-### Paso 3: Verificar
-
-- Backend estará disponible en el puerto configurado
-- Frontend estará disponible en el puerto 80 o el dominio configurado
 
 ---
 
