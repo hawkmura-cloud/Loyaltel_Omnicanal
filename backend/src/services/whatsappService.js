@@ -36,16 +36,16 @@ class WhatsAppService {
 
   // Validar webhook de WhatsApp (verificación de challenge)
   verifyWebhook(mode, token, challenge) {
-    // token debe coincidir con el webhook_secret configurado
-    // En producción, verificar contra el secreto de la campaña
-    // Por ahora aceptamos cualquier token para desarrollo
-    const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'loyaltel_webhook_2026';
-    
+    // Usar el token de verificación configurado en .env
+    const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'loyaltel_webhook_2026';
+
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('Webhook verification successful');
+      console.log('✅ Webhook verification successful');
       return challenge;
     } else {
-      console.log('Webhook verification failed');
+      console.log('❌ Webhook verification failed');
+      console.log('Expected token:', VERIFY_TOKEN);
+      console.log('Received token:', token);
       return null;
     }
   }
@@ -182,14 +182,18 @@ class WhatsAppService {
     return { ok: true, message: 'Status procesado' };
   }
 
-  // Enviar mensaje a través de WhatsApp API
-  async sendMessage(to, text, campaign) {
+  // Enviar mensaje a través de WhatsApp API (usando credenciales globales del .env)
+  async sendMessage(to, text, campaign = null) {
     try {
-      if (!campaign.access_token || !campaign.phone_id) {
-        return { ok: false, error: 'Falta access_token o phone_id en la campaña' };
+      // Usar credenciales del .env si no se proporciona campaña
+      const phoneNumberId = campaign?.phone_id || process.env.WHATSAPP_PHONE_NUMBER_ID;
+      const accessToken = campaign?.access_token || process.env.WHATSAPP_ACCESS_TOKEN;
+
+      if (!phoneNumberId || !accessToken) {
+        return { ok: false, error: 'Falta WHATSAPP_PHONE_NUMBER_ID o WHATSAPP_ACCESS_TOKEN en .env' };
       }
 
-      const url = `${this.baseUrl}/${campaign.phone_id}/messages`;
+      const url = `${this.baseUrl}/${phoneNumberId}/messages`;
 
       const response = await axios.post(
         url,
@@ -201,7 +205,7 @@ class WhatsAppService {
         },
         {
           headers: {
-            'Authorization': `Bearer ${campaign.access_token}`,
+            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json'
           }
         }

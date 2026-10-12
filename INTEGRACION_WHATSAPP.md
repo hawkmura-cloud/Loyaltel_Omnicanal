@@ -76,12 +76,17 @@ Este documento explica cómo configurar la integración del sistema con WhatsApp
 
 ### 3. Variables de Entorno
 
-Agrega estas variables al archivo `.env`:
+Agrega estas variables al archivo `.env` (obtenidas desde Meta Business Suite):
 
 ```env
-# Configuración WhatsApp
-WHATSAPP_VERIFY_TOKEN=loyaltel_webhook_2026
+# Configuración WhatsApp Business Platform
+WHATSAPP_PHONE_NUMBER_ID=1359816560552036
+WHATSAPP_BUSINESS_ACCOUNT_ID=1107510665091182
+WHATSAPP_ACCESS_TOKEN=EAAXNPT58kD0BSjkc2SQvjAVnJUzG5WdS7xV9H5h4eqEyZAj7CEcEOPQNTmWg7rXxm7tHMBvnGsAadZCTCxIHYLaTqaiUqFPCQWuR6Q2zTw9VszmFKZA6NW88R30jMApKLVZBnIutvDGLlnV1dYZAIZCSdxJV3AWIfRyZCtT2npP7IgGMyC9d4wZCahTbPanL4iJFe7UgOMKX5PCTNZBFKxZCSVqRAC9lRQY4TzhrkDZCfeOx68xNvmMbG8bgP16zxN0GBeeiy0xYASK2IZC5ZCC9ZCfZApxrgZDZD
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=loyaltel_whatsapp_verify_2026_secure
 ```
+
+**Nota:** Las credenciales de WhatsApp se configuran globalmente en el `.env` para toda la aplicación.
 
 ---
 
