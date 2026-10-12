@@ -1,0 +1,21 @@
+services:
+
+  mysql:
+    image: mysql:8.4
+    container_name: claro_mysql
+    restart: unless-stopped
+
+    environment:
+      MYSQL_ROOT_PASSWORD: claro_root_2026
+      MYSQL_DATABASE: claro_chatbot
+      MYSQL_USER: claro_app
+      MYSQL_PASSWORD: claro_app_2026
+
+    ports:
+      - "3306:3306"
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
