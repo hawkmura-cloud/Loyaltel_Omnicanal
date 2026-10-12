@@ -140,7 +140,17 @@ main { padding: 28px; min-width: 0; display: flex; flex-direction: column; }
   border: 0; border-radius: 7px; padding: 8px 12px;
   cursor: pointer; font-size: 11px; font-weight: 700;
 }
-.btn-client-card { background: white; color: var(--navy); }
+.btn-client-card {
+  background: white; color: var(--navy);
+  border: 2px solid var(--loyaltel-blue);
+  padding: 10px 18px;
+  font-weight: 700;
+  border-radius: 8px;
+}
+.btn-client-card:hover {
+  background: var(--loyaltel-blue);
+  color: white;
+}
 .btn-finish { background: var(--red); color: white; }
 
 .status-selector {
@@ -234,10 +244,20 @@ main { padding: 28px; min-width: 0; display: flex; flex-direction: column; }
   border-radius: 6px; font-size: 13px;
 }
 .edit-client-btn {
-  border: 0; background: transparent; cursor: pointer;
-  color: var(--muted); font-size: 11px; margin-top: 8px;
+  border: 2px solid var(--loyaltel-blue);
+  background: white;
+  color: var(--loyaltel-blue);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 6px;
+  margin-top: 12px;
 }
-.edit-client-btn:hover { color: var(--navy); }
+.edit-client-btn:hover {
+  background: var(--loyaltel-blue);
+  color: white;
+}
 .edit-input {
   width: 100%; padding: 8px; border: 1px solid var(--border);
   border-radius: 6px; font-size: 13px;
