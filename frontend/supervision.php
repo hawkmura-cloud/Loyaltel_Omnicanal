@@ -1246,7 +1246,7 @@ footer {
 </div>
 
 <script>
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = window.location.origin ? `${window.location.origin}/api` : "/api";
 const API_URL = `${API_BASE}/panel/resumen`;
 const SSE_URL = `${API_BASE}/panel/sse`;
 

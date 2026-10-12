@@ -1415,7 +1415,7 @@ main {
 </div>
 
 <script>
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = window.location.origin ? `${window.location.origin}/api` : "/api";
 let currentAsesor = null;
 let currentConversation = null;
 let eventSource = null;
