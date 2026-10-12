@@ -401,8 +401,6 @@ body {
       Servicio en línea
     </div>
     <span>•</span>
-    <span>Loyaltel Contact Center Platform © 2026</span>
-    <span>•</span>
     <span>Versión 2.6</span>
   </footer>
 </div>
