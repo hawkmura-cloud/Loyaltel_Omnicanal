@@ -50,6 +50,8 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+    volumes:
+      - ./frontend:/var/www/html
     depends_on:
       - backend
 
