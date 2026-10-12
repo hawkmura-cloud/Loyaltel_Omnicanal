@@ -1242,7 +1242,6 @@ footer {
       </section>
     </div>
 
-    <footer>Loyaltel · Plataforma Omnicanal de Contact Center © 2026</footer>
   </main>
 </div>
 
