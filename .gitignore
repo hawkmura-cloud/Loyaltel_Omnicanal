@@ -47,9 +47,6 @@ vendor/
 composer.lock
 .php_cs.cache
 
-# Supabase
-.supabase/
-
 # Temporary files
 tmp/
 temp/

@@ -99,12 +99,6 @@ docker-compose exec mysql mysql -u claro_app -pclaro_app_2026 claro_chatbot
 
 ---
 
-## 🔐 Supabase (Futuro)
-
-Las credenciales de Supabase están guardadas en `backend/.env.production` como comentarios para una futura migración a PostgreSQL. Actualmente, la aplicación usa MySQL en Docker.
-
----
-
 ## ⚠️ Notas Importantes
 
 1. **Base de datos:** MySQL está en contenedor Docker, datos persisten en volumen
