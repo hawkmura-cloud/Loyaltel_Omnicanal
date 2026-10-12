@@ -1126,7 +1126,7 @@ $("closeCardBtn").addEventListener("click", () => {
 function connectSSE() {
   if (eventSource) eventSource.close();
 
-  eventSource = new EventSource(`${API_BASE}/panel/sse`);
+  eventSource = new EventSource(`${API_BASE}/panel/sse?token=${authToken}`);
 
   eventSource.addEventListener("nuevo_mensaje", () => {
     if (currentConversation) {

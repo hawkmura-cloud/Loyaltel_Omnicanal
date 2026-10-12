@@ -15,14 +15,19 @@ function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
-    if (!token) {
+    // También aceptar token como query parameter (para SSE)
+    const queryToken = req.query.token;
+
+    const finalToken = token || queryToken;
+
+    if (!finalToken) {
         return res.status(401).json({
             ok: false,
             error: 'No se proporcionó token de autenticación'
         });
     }
 
-    jwt.verify(token, JWT_SECRET, (err, user) => {
+    jwt.verify(finalToken, JWT_SECRET, (err, user) => {
         if (err) {
             return res.status(403).json({
                 ok: false,
