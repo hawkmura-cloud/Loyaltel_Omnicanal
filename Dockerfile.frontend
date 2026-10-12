@@ -1,0 +1,22 @@
+# Frontend Dockerfile (PHP)
+FROM php:8.2-apache
+
+WORKDIR /var/www/html
+
+# Instalar extensiones necesarias
+RUN docker-php-ext-install mysqli pdo pdo_mysql
+
+# Habilitar mod_rewrite
+RUN a2enmod rewrite
+
+# Copiar archivos del frontend
+COPY frontend/ ./
+
+# Configurar Apache
+RUN echo "DocumentRoot /var/www/html" > /etc/apache2/sites-available/000-default.conf
+
+# Exponer puerto
+EXPOSE 80
+
+# Iniciar Apache
+CMD ["apache2-foreground"]
