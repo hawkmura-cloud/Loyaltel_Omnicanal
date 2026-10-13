@@ -1,4 +1,4 @@
-# Loyaltel Contact Center
+# Loyaltel Contact Center Platform
 
 Sistema omnicanal de atención al cliente para call centers, con integración con WhatsApp Business Platform.
 
@@ -13,58 +13,7 @@ Sistema omnicanal de atención al cliente para call centers, con integración co
 - **Real-time Updates:** Server-Sent Events para actualizaciones en vivo
 - **Autenticación JWT:** Roles: superadmin, supervisor, asesor
 
-## 🚀 Quick Start
-
-### Desarrollo Local
-
-**Requisitos:**
-- Node.js 18+
-- MySQL 8.0+
-- PHP 8.0+
-
-**Instalación:**
-```bash
-# Clonar repositorio
-git clone https://github.com/hawkmura-cloud/claro-chatbot.git
-cd claro-chatbot
-
-# Configurar base de datos MySQL
-# Crear base de datos: claro_chatbot
-# Ejecutar migraciones (ver backend/migrate_*.js)
-
-# Configurar backend
-cd backend
-npm install
-cp .env.example .env
-# Editar .env con tus credenciales
-
-# Iniciar backend
-node server.js
-
-# En otra terminal, iniciar frontend
-cd frontend
-php -S localhost:8080
-```
-
-### Docker
-
-```bash
-# Construir y ejecutar
-docker-compose up -d
-
-# Servicios:
-# - Backend: http://localhost:3000
-# - Frontend: http://localhost:80
-# - MySQL: localhost:3306
-```
-
-Ver [DOCKER.md](DOCKER.md) para más detalles.
-
-## 📱 Integración WhatsApp
-
-Ver [INTEGRACION_WHATSAPP.md](INTEGRACION_WHATSAPP.md) para configuración completa de WhatsApp Business Platform.
-
-## 🔐 Credenciales por Defecto
+## � Credenciales por Defecto
 
 | Rol | Usuario | Contraseña |
 |-----|---------|------------|
@@ -74,23 +23,60 @@ Ver [INTEGRACION_WHATSAPP.md](INTEGRACION_WHATSAPP.md) para configuración compl
 
 **⚠️ Cambiar estas credenciales en producción.**
 
-## 📁 Estructura del Proyecto
+## 🚀 Quick Start (Docker)
+
+### Requisitos Previos
+
+- Docker Desktop instalado
+- Git instalado
+
+### Paso 1: Clonar el Repositorio
+
+```bash
+git clone https://github.com/hawkmura-cloud/Loyaltel_Omnicanal.git
+cd Loyaltel_Omnicanal
+```
+
+### Paso 2: Configurar Variables de Entorno
+
+El backend usa variables de entorno configuradas en `backend/.env.docker`. Para producción, puedes crear `backend/.env.production` con tus propias credenciales.
+
+### Paso 3: Iniciar el Sistema
+
+```bash
+docker-compose up -d --build
+```
+
+### Paso 4: Acceder al Sistema
+
+- **Frontend:** http://localhost:80
+- **Backend API:** http://localhost:3000
+- **MySQL:** localhost:3306
+
+### Paso 5: Detener el Sistema
+
+```bash
+docker-compose down
+```
+
+## � Estructura del Proyecto
 
 ```
-claro-chatbot/
+Loyaltel_Omnicanal/
 ├── backend/              # API Node.js
 │   ├── src/
 │   │   ├── config/      # Configuración de base de datos
 │   │   ├── middleware/  # Middleware de autenticación
 │   │   ├── services/    # Servicios de negocio
 │   │   └── utils/       # Utilidades (SSE, logger)
-│   ├── migrate_*.js     # Scripts de migración
-│   └── server.js        # Servidor Express
+│   ├── server.js        # Servidor Express
+│   └── .env.docker     # Variables de entorno Docker
 ├── frontend/            # Panel PHP
 │   ├── index.php        # Selección de roles
 │   ├── supervision.php  # Panel supervisor
 │   ├── asesor.php       # Panel asesor
-│   └── superadmin.php   # Panel super admin
+│   ├── superadmin.php   # Panel super admin
+│   └── css/             # Estilos modernos
 ├── docker-compose.yml    # Configuración Docker
 ├── Dockerfile.backend    # Docker para backend
 └── Dockerfile.frontend  # Docker para frontend
@@ -98,26 +84,19 @@ claro-chatbot/
 
 ## 🛠 Tecnologías
 
-- **Backend:** Node.js, Express, MySQL
-- **Frontend:** PHP, JavaScript, HTML/CSS
+- **Backend:** Node.js 18, Express, MySQL 8.4
+- **Frontend:** PHP 8.2, Apache, JavaScript
 - **Auth:** JWT, bcrypt
 - **Real-time:** Server-Sent Events (SSE)
 - **WhatsApp:** Meta Graph API
 - **Container:** Docker, Docker Compose
 
-## 📖 Documentación
+## 📖 Documentación Adicional
 
-- [INSTRUCCIONES_DESPLIEGUE.md](INSTRUCCIONES_DESPLIEGUE.md) - Guía de despliegue
-- [INTEGRACION_WHATSAPP.md](INTEGRACION_WHATSAPP.md) - Integración WhatsApp
-- [DOCKER.md](DOCKER.md) - Despliegue con Docker
-- [AUDITORIA_SEGURIDAD.md](AUDITORIA_SEGURIDAD.md) - Auditoría de seguridad
-- [PANEL_SUPER_ADMIN.md](PANEL_SUPER_ADMIN.md) - Guía del panel super admin
+- [DOCUMENTACION_TECNICA.md](DOCUMENTACION_TECNICA.md) - Docker, Despliegue, WhatsApp, Seguridad
+- [GUIA_USUARIO.md](GUIA_USUARIO.md) - Paneles de usuario, Pruebas
 
-## 🤝 Contribuciones
-
-Este es un proyecto privado. Contactar al mantenedor para contribuciones.
-
-## 📄 Licencia
+## 🤝 Licencia
 
 Propiedad de Loyaltel. Todos los derechos reservados.
 
