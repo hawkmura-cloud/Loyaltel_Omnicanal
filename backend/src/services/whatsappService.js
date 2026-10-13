@@ -136,32 +136,33 @@ class WhatsAppService {
           conversationId = existing[0].id;
           await connection.query(
             `UPDATE conversaciones
-             SET estado_conversacion = 'en_curso',
-                 fecha_ultimo_mensaje = NOW()
+             SET estado_conversacion = 'activa',
+                 fecha_actualizacion = NOW()
              WHERE id = ?`,
             [conversationId]
           );
         } else {
-          // Crear nueva conversación
+          // Crear nueva conversación - usar cliente_id 18 (Cliente Prueba)
           const [result] = await connection.query(
             `INSERT INTO conversaciones
-             (cliente_id, cliente_panel_id, campaña_whatsapp_id, telefono_whatsapp, estado_conversacion, fecha_inicio, fecha_ultimo_mensaje)
-             VALUES (?, ?, ?, ?, 'en_curso', NOW(), NOW())`,
-            [null, campaign.cliente_panel_id, campaign.id, from]
+             (cliente_id, cliente_panel_id, campaña_whatsapp_id, telefono_whatsapp, estado_conversacion, fecha_inicio, fecha_actualizacion)
+             VALUES (18, ?, ?, ?, 'activa', NOW(), NOW())`,
+            [campaign.cliente_panel_id, campaign.id, from]
           );
           conversationId = result.insertId;
         }
 
-        // Insertar mensaje
+        // Insertar mensaje - usando campos correctos del esquema actual
         await connection.query(
           `INSERT INTO mensajes
-           (conversacion_id, remitente, contenido, tipo_mensaje, fecha_mensaje)
-           VALUES (?, 'cliente', ?, 'texto', FROM_UNIXTIME(?))`,
+           (conversacion_id, remitente, mensaje, fecha, origen_mensaje)
+           VALUES (?, 'cliente', ?, FROM_UNIXTIME(?), 'sistema')`,
           [conversationId, text, timestamp]
         );
 
         await connection.commit();
 
+        console.log(`✅ Mensaje procesado: Conversación ID ${conversationId}, de ${from}: "${text}"`);
         return { ok: true, conversationId, message: 'Mensaje procesado' };
       } catch (error) {
         await connection.rollback();
