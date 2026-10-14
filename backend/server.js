@@ -1685,6 +1685,189 @@ app.post(
 );
 
 
+// ======================================================
+// ENDPOINT PARA QUE SUPERVISOR TOME UN CHAT DE LA COLA
+// ======================================================
+
+app.post("/api/conversaciones/:id/tomar", authenticateToken, requireSupervisor, async (req, res) => {
+    try {
+        const conversacionId = Number(req.params.id);
+        const supervisorId = req.user.asesorId || req.user.id;
+
+        if (!Number.isInteger(conversacionId) || conversacionId <= 0) {
+            return res.status(400).json({
+                ok: false,
+                error: "ID de conversación inválido"
+            });
+        }
+
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // Verificar que la conversación existe y está en cola
+            const [conversaciones] = await connection.query(
+                `SELECT * FROM conversaciones WHERE id = ? LIMIT 1`,
+                [conversacionId]
+            );
+
+            if (conversaciones.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({
+                    ok: false,
+                    error: "Conversación no encontrada"
+                });
+            }
+
+            const conversacion = conversaciones[0];
+
+            // Asignar al supervisor
+            await connection.query(
+                `UPDATE conversaciones
+                 SET asesor_id = ?, fecha_asignacion = NOW(), estado_conversacion = 'atendida'
+                 WHERE id = ?`,
+                [supervisorId, conversacionId]
+            );
+
+            // Actualizar estado en cola
+            await connection.query(
+                `UPDATE cola_atencion
+                 SET estado = 'atendida', fecha_atencion = NOW()
+                 WHERE conversacion_id = ? AND estado = 'esperando'`,
+                [conversacionId]
+            );
+
+            // Registrar actividad
+            await connection.query(
+                `INSERT INTO historial_actividad
+                 (conversacion_id, asesor_id, tipo_accion, descripcion)
+                 VALUES (?, ?, 'asignacion', ?)`,
+                [conversacionId, supervisorId, `Supervisor tomó conversación ${conversacionId}`]
+            );
+
+            await connection.commit();
+
+            res.json({
+                ok: true,
+                mensaje: "Conversación tomada por supervisor",
+                conversacion_id: conversacionId,
+                asesor_id: supervisorId
+            });
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        console.error("Error tomando conversación:", error);
+        res.status(500).json({
+            ok: false,
+            error: "No se pudo tomar la conversación"
+        });
+    }
+});
+
+
+// ======================================================
+// ENDPOINT PARA REASIGNAR CONVERSACIÓN A OTRO ASESOR
+// ======================================================
+
+app.put("/api/conversaciones/:id/reasignar", authenticateToken, requireSupervisor, async (req, res) => {
+    try {
+        const conversacionId = Number(req.params.id);
+        const { nuevo_asesor_id } = req.body;
+
+        if (!Number.isInteger(conversacionId) || conversacionId <= 0) {
+            return res.status(400).json({
+                ok: false,
+                error: "ID de conversación inválido"
+            });
+        }
+
+        if (!nuevo_asesor_id || !Number.isInteger(nuevo_asesor_id)) {
+            return res.status(400).json({
+                ok: false,
+                error: "ID de asesor inválido"
+            });
+        }
+
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // Verificar que la conversación existe
+            const [conversaciones] = await connection.query(
+                `SELECT * FROM conversaciones WHERE id = ? LIMIT 1`,
+                [conversacionId]
+            );
+
+            if (conversaciones.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({
+                    ok: false,
+                    error: "Conversación no encontrada"
+                });
+            }
+
+            const conversacion = conversaciones[0];
+            const asesorAnterior = conversacion.asesor_id;
+
+            // Verificar que el nuevo asesor existe
+            const [asesores] = await connection.query(
+                `SELECT * FROM asesores WHERE id = ? LIMIT 1`,
+                [nuevo_asesor_id]
+            );
+
+            if (asesores.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({
+                    ok: false,
+                    error: "Asesor no encontrado"
+                });
+            }
+
+            // Reasignar conversación
+            await connection.query(
+                `UPDATE conversaciones
+                 SET asesor_id = ?, fecha_asignacion = NOW()
+                 WHERE id = ?`,
+                [nuevo_asesor_id, conversacionId]
+            );
+
+            // Registrar actividad
+            await connection.query(
+                `INSERT INTO historial_actividad
+                 (conversacion_id, asesor_id, tipo_accion, descripcion)
+                 VALUES (?, ?, 'reasignacion', ?)`,
+                [conversacionId, nuevo_asesor_id, `Reasignada de asesor ${asesorAnterior} a asesor ${nuevo_asesor_id}`]
+            );
+
+            await connection.commit();
+
+            res.json({
+                ok: true,
+                mensaje: "Conversación reasignada",
+                conversacion_id: conversacionId,
+                asesor_anterior: asesorAnterior,
+                asesor_nuevo: nuevo_asesor_id
+            });
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        console.error("Error reasignando conversación:", error);
+        res.status(500).json({
+            ok: false,
+            error: "No se pudo reasignar la conversación"
+        });
+    }
+});
+
+
 
 // ======================================================
 // CONEXIÓN A MYSQL

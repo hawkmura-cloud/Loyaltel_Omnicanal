@@ -13,6 +13,7 @@ async function obtenerAsesorDisponible() {
         `SELECT *
          FROM asesores
          WHERE estado = 'disponible'
+         AND rol = 'asesor'
          ORDER BY id ASC
          LIMIT 1`
     );
@@ -31,25 +32,10 @@ async function asignarAsesor(conversacionId, asesorId) {
     try {
         await connection.beginTransaction();
 
-        // Reservar al asesor solamente si sigue disponible.
-        const [asesores] = await connection.query(
-            `UPDATE asesores
-             SET estado = 'ocupado'
-             WHERE id = ?
-             AND estado = 'disponible'`,
-            [asesorId]
-        );
-
-        if (asesores.affectedRows === 0) {
-            await connection.rollback();
-            return false;
-        }
-
-        // Asignar la conversación al asesor.
+        // Asignar la conversación al asesor (sin cambiar estado del asesor)
         const [conversaciones] = await connection.query(
            `UPDATE conversaciones
  SET asesor_id = ?,
-     estado = 'asesor',
      bot_activo = FALSE,
      estado_conversacion = 'atendida',
      fecha_asignacion = CURRENT_TIMESTAMP

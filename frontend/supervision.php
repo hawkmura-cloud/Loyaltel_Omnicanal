@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="headset-light.svg" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="headset-dark.svg" media="(prefers-color-scheme: light)">
 <title>Loyaltel · Panel de Supervisión Omnicanal</title>
 <link rel="stylesheet" href="css/modern.css">
 <style>

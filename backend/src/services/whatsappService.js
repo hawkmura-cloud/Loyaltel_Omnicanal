@@ -1,5 +1,6 @@
 const axios = require('axios');
 const pool = require('../config/database');
+const { agregarACola, asignarSiguienteDeCola } = require('./advisorService');
 
 class WhatsAppService {
   constructor() {
@@ -183,22 +184,24 @@ class WhatsAppService {
           const [result] = await connection.query(
             `INSERT INTO conversaciones
              (cliente_id, cliente_panel_id, campaña_whatsapp_id, telefono_whatsapp, estado_conversacion, fecha_inicio, fecha_actualizacion)
-             VALUES (18, ?, ?, ?, 'activa', NOW(), NOW())`,
+             VALUES (18, ?, ?, ?, 'esperando_asesor', NOW(), NOW())`,
             [campaign.cliente_panel_id, campaign.id, from]
           );
           conversationId = result.insertId;
 
-          // Asignar automáticamente un asesor disponible
-          const advisorId = await this.assignAvailableAdvisor();
-          if (advisorId) {
-            await connection.query(
-              `UPDATE conversaciones 
-               SET asesor_id = ?, fecha_asignacion = NOW() 
-               WHERE id = ?`,
-              [advisorId, conversationId]
-            );
-            console.log(`✅ Conversación ${conversationId} asignada al asesor ${advisorId}`);
+          // Agregar a la cola de espera
+          await connection.commit(); // Commit para usar agregarACola que usa pool independiente
+          await agregarACola(conversationId);
+          console.log(`✅ Conversación ${conversationId} agregada a la cola de espera`);
+
+          // Intentar asignar automáticamente un asesor disponible
+          const asignacion = await asignarSiguienteDeCola();
+          if (asignacion.asignado) {
+            console.log(`✅ Conversación ${asignacion.conversacion_id} asignada a asesor ${asignacion.asesor.nombre}`);
+          } else {
+            console.log(`⚠️ Conversación en espera - ${asignacion.motivo}`);
           }
+          return { ok: true, conversationId, message: 'Mensaje procesado y agregado a cola' };
         }
 
         // Insertar mensaje - usando campos correctos del esquema actual
@@ -230,39 +233,6 @@ class WhatsAppService {
     console.log('Status update:', status);
     // Por ahora solo logueamos, luego se puede implementar tracking
     return { ok: true, message: 'Status procesado' };
-  }
-
-  // Asignar automáticamente un asesor disponible
-  async assignAvailableAdvisor() {
-    try {
-      // Buscar asesores disponibles (estado = 'disponible')
-      const [advisors] = await pool.query(
-        `SELECT id, nombre FROM asesores
-         WHERE estado = 'disponible'
-         AND id NOT IN (SELECT DISTINCT asesor_id FROM conversaciones WHERE estado_conversacion = 'activa' AND asesor_id IS NOT NULL)
-         ORDER BY CASE WHEN last_assigned_at IS NULL THEN 0 ELSE 1 END, last_assigned_at ASC
-         LIMIT 1`
-      );
-
-      if (advisors.length === 0) {
-        console.log('⚠️ No hay asesores disponibles');
-        return null;
-      }
-
-      const advisor = advisors[0];
-
-      // Actualizar last_assigned_at para round-robin
-      await pool.query(
-        `UPDATE asesores SET last_assigned_at = NOW() WHERE id = ?`,
-        [advisor.id]
-      );
-
-      console.log(`✅ Asesor asignado automáticamente: ${advisor.nombre} (ID: ${advisor.id})`);
-      return advisor.id;
-    } catch (error) {
-      console.error('Error asignando asesor:', error);
-      return null;
-    }
   }
 
   // Enviar mensaje a través de WhatsApp API (usando credenciales globales del .env)
