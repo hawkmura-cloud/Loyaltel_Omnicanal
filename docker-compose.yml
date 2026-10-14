@@ -1,20 +1,22 @@
+name: loyaltel-omnicanal
+
 services:
   # MySQL Database
   mysql:
     image: mysql:8.4
-    container_name: claro_mysql
+    container_name: loyaltel_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: claro_root_2026
-      MYSQL_DATABASE: claro_chatbot
-      MYSQL_USER: claro_app
-      MYSQL_PASSWORD: claro_app_2026
+      MYSQL_ROOT_PASSWORD: loyaltel_root_2026
+      MYSQL_DATABASE: loyaltel_omnicanal
+      MYSQL_USER: loyaltel_app
+      MYSQL_PASSWORD: loyaltel_app_2026
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pclaro_root_2026"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ployaltel_root_2026"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,7 +26,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    container_name: claro_backend
+    container_name: loyaltel_backend
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -32,10 +34,10 @@ services:
       - NODE_ENV=production
       - DB_HOST=mysql
       - DB_PORT=3306
-      - DB_NAME=claro_chatbot
-      - DB_USER=claro_app
-      - DB_PASSWORD=claro_app_2026
-      - JWT_SECRET=${JWT_SECRET:-claro_chatbot_jwt_secret_2026_prod_secure_key_random_string}
+      - DB_NAME=loyaltel_omnicanal
+      - DB_USER=loyaltel_app
+      - DB_PASSWORD=loyaltel_app_2026
+      - JWT_SECRET=${JWT_SECRET:-loyaltel_omnicanal_jwt_secret_2026_prod_secure_key_random_string}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-8h}
     depends_on:
       mysql:
@@ -46,7 +48,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    container_name: claro_frontend
+    container_name: loyaltel_frontend
     restart: unless-stopped
     ports:
       - "80:80"

@@ -156,7 +156,7 @@ class WhatsAppService {
         const [existing] = await connection.query(
           `SELECT * FROM conversaciones
            WHERE telefono_whatsapp = ?
-           AND campaña_whatsapp_id = ?
+           AND campanas_whatsapp_id = ?
            AND estado_conversacion != 'finalizada'
            ORDER BY fecha_inicio DESC
            LIMIT 1`,
@@ -183,7 +183,7 @@ class WhatsAppService {
           // Crear nueva conversación - usar cliente_id 18 (Cliente Prueba)
           const [result] = await connection.query(
             `INSERT INTO conversaciones
-             (cliente_id, cliente_panel_id, campaña_whatsapp_id, telefono_whatsapp, estado_conversacion, fecha_inicio, fecha_actualizacion)
+             (cliente_id, cliente_panel_id, campanas_whatsapp_id, telefono_whatsapp, estado_conversacion, fecha_inicio, fecha_actualizacion)
              VALUES (18, ?, ?, ?, 'esperando_asesor', NOW(), NOW())`,
             [campaign.cliente_panel_id, campaign.id, from]
           );

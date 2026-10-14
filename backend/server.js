@@ -12,7 +12,7 @@ const whatsappService = require("./src/services/whatsappService");
 
 const JWT_SECRET = process.env.JWT_SECRET || (() => {
     console.warn('⚠️ JWT_SECRET no configurado en .env, usando valor por defecto (NO SEGURO)');
-    return 'claro_chatbot_secret_key_2026_CHANGE_IN_PRODUCTION';
+    return 'loyaltel_omnicanal_secret_key_2026_CHANGE_IN_PRODUCTION';
 })();
 
 const {
@@ -288,7 +288,7 @@ app.get("/api/usuarios", authenticateToken, requireSuperAdmin, async (req, res) 
 // Crear nuevo usuario
 app.post("/api/usuarios", authenticateToken, requireSuperAdmin, async (req, res) => {
     try {
-        const { nombre, telefono, usuario, password, rol, estado, cliente_panel_id, campaña_whatsapp_id } = req.body;
+        const { nombre, telefono, usuario, password, rol, estado, cliente_panel_id, campanas_whatsapp_id } = req.body;
 
         if (!nombre || !usuario || !password || !rol) {
             return res.status(400).json({
@@ -310,9 +310,9 @@ app.post("/api/usuarios", authenticateToken, requireSuperAdmin, async (req, res)
         let query, values;
         
         if (rol === 'asesor') {
-            query = `INSERT INTO asesores (nombre, telefono, usuario, password_hash, rol, estado, cliente_panel_id, campaña_whatsapp_id)
+            query = `INSERT INTO asesores (nombre, telefono, usuario, password_hash, rol, estado, cliente_panel_id, campanas_whatsapp_id)
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-            values = [nombre, telefono || null, usuario, passwordHash, rol, estado || 'disponible', cliente_panel_id || null, campaña_whatsapp_id || null];
+            values = [nombre, telefono || null, usuario, passwordHash, rol, estado || 'disponible', cliente_panel_id || null, campanas_whatsapp_id || null];
         } else {
             query = `INSERT INTO asesores (nombre, telefono, usuario, password_hash, rol, estado)
                       VALUES (?, ?, ?, ?, ?, ?)`;
@@ -331,7 +331,7 @@ app.post("/api/usuarios", authenticateToken, requireSuperAdmin, async (req, res)
                 rol,
                 estado: estado || 'disponible',
                 cliente_panel_id: rol === 'asesor' ? cliente_panel_id : null,
-                campaña_whatsapp_id: rol === 'asesor' ? campaña_whatsapp_id : null
+                campanas_whatsapp_id: rol === 'asesor' ? campanas_whatsapp_id : null
             }
         });
     } catch (error) {
@@ -350,7 +350,7 @@ app.post("/api/usuarios", authenticateToken, requireSuperAdmin, async (req, res)
 app.put("/api/usuarios/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { nombre, telefono, usuario, password, rol, estado, cliente_panel_id, campaña_whatsapp_id } = req.body;
+        const { nombre, telefono, usuario, password, rol, estado, cliente_panel_id, campanas_whatsapp_id } = req.body;
 
         // Verificar que no se intente modificar el propio super admin
         if (usuario === 'superadmin') {
@@ -397,9 +397,9 @@ app.put("/api/usuarios/:id", authenticateToken, requireSuperAdmin, async (req, r
             updates.push('cliente_panel_id = ?');
             values.push(cliente_panel_id || null);
         }
-        if (campaña_whatsapp_id !== undefined) {
-            updates.push('campaña_whatsapp_id = ?');
-            values.push(campaña_whatsapp_id || null);
+        if (campanas_whatsapp_id !== undefined) {
+            updates.push('campanas_whatsapp_id = ?');
+            values.push(campanas_whatsapp_id || null);
         }
 
         if (updates.length === 0) {
@@ -569,7 +569,7 @@ app.delete("/api/campañas_whatsapp/:id", authenticateToken, requireSuperAdmin, 
 
         // Verificar que no tenga conversaciones activas
         const [convs] = await pool.query(
-            'SELECT COUNT(*) as total FROM conversaciones WHERE campaña_whatsapp_id = ? AND estado_conversacion != "finalizada"',
+            'SELECT COUNT(*) as total FROM conversaciones WHERE campanas_whatsapp_id = ? AND estado_conversacion != "finalizada"',
             [id]
         );
 
@@ -864,7 +864,7 @@ app.post("/api/importar/whatsapp", authenticateToken, requireSuperAdmin, async (
                     const [existente] = await connection.query(
                         `SELECT id FROM conversaciones
                          WHERE telefono_whatsapp = ?
-                         AND campaña_whatsapp_id = ?
+                         AND campanas_whatsapp_id = ?
                          LIMIT 1`,
                         [telefono, campaña_id]
                     );
@@ -877,7 +877,7 @@ app.post("/api/importar/whatsapp", authenticateToken, requireSuperAdmin, async (
                         // Crear nueva conversación
                         const [result] = await connection.query(
                             `INSERT INTO conversaciones
-                             (cliente_panel_id, campaña_whatsapp_id, telefono_whatsapp, estado_conversacion, fecha_inicio, fecha_ultimo_mensaje)
+                             (cliente_panel_id, campanas_whatsapp_id, telefono_whatsapp, estado_conversacion, fecha_inicio, fecha_ultimo_mensaje)
                              VALUES (?, ?, ?, 'finalizada', NOW(), NOW())`,
                             [campaña.cliente_panel_id, campaña_id, telefono]
                         );
@@ -1372,7 +1372,7 @@ app.post(
 
             // Consultar la conversación con datos de WhatsApp.
             const [conversaciones] = await pool.query(
-                `SELECT id, estado_conversacion, asesor_id, campaña_whatsapp_id, telefono_whatsapp
+                `SELECT id, estado_conversacion, asesor_id, campanas_whatsapp_id, telefono_whatsapp
                  FROM conversaciones
                  WHERE id = ?
                  LIMIT 1`,
@@ -1427,9 +1427,9 @@ app.post(
             );
 
             // Enviar mensaje por WhatsApp si está configurado
-            if (conversacion.campaña_whatsapp_id && conversacion.telefono_whatsapp) {
+            if (conversacion.campanas_whatsapp_id && conversacion.telefono_whatsapp) {
                 try {
-                    const campaign = await whatsappService.getCampaignById(conversacion.campaña_whatsapp_id);
+                    const campaign = await whatsappService.getCampaignById(conversacion.campanas_whatsapp_id);
                     if (campaign && campaign.activo) {
                         const whatsappResult = await whatsappService.sendMessage(
                             conversacion.telefono_whatsapp,

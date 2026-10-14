@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || (() => {
     console.warn('⚠️ JWT_SECRET no configurado en .env, usando valor por defecto (NO SEGURO)');
-    return 'claro_chatbot_secret_key_2026_CHANGE_IN_PRODUCTION';
+    return 'loyaltel_omnicanal_secret_key_2026_CHANGE_IN_PRODUCTION';
 })();
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
