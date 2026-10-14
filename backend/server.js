@@ -1752,10 +1752,10 @@ app.get("/api/panel/resumen", authenticateToken, requireSupervisor, async (req, 
                
 COALESCE(
     NULLIF(TRIM(cl.nombre), ''),
-    CONCAT('Cliente ', cl.telefono)
+    CONCAT('Cliente ', c.telefono_whatsapp)
 ) AS cliente,
 
-                    cl.telefono,
+                    c.telefono_whatsapp AS telefono,
                     c.estado,
                     c.estado_conversacion,
                     c.asesor_id,
@@ -1859,9 +1859,9 @@ app.get("/api/asesor/:id/conversaciones", authenticateToken, requireAsesorOrSelf
                 c.id AS conversacion_id,
                 COALESCE(
                     NULLIF(TRIM(cl.nombre), ''),
-                    CONCAT('Cliente ', cl.telefono)
+                    CONCAT('Cliente ', c.telefono_whatsapp)
                 ) AS cliente,
-                cl.telefono,
+                c.telefono_whatsapp AS telefono,
                 cl.nombre AS nombre_completo,
                 cl.distrito,
                 c.estado,

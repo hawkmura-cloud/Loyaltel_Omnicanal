@@ -20,6 +20,20 @@ class WhatsAppService {
     }
   }
 
+  // Obtener configuración de una campaña por Phone ID
+  async getCampaignByPhoneId(phoneId) {
+    try {
+      const [rows] = await pool.query(
+        'SELECT * FROM campañas_whatsapp WHERE phone_id = ? AND activo = TRUE',
+        [phoneId]
+      );
+      return rows[0] || null;
+    } catch (error) {
+      console.error('Error obteniendo campaña por Phone ID:', error);
+      return null;
+    }
+  }
+
   // Obtener configuración de una campaña por ID
   async getCampaignById(id) {
     try {
@@ -65,7 +79,7 @@ class WhatsAppService {
       // Mensaje entrante
       const message = value.messages?.[0];
       if (message) {
-        return await this.processMessage(message, value.metadata);
+        return await this.processMessage(message, value.metadata, value.contacts);
       }
 
       // Estado de mensaje (delivery, read, etc.)
@@ -82,23 +96,42 @@ class WhatsAppService {
   }
 
   // Procesar mensaje de texto
-  async processMessage(message, metadata) {
+  async processMessage(message, metadata, contacts) {
     try {
-      const from = message.from; // Número del cliente
-      const to = message.to; // Número de WhatsApp Business
+      const from = message.from || message.from_user_id; // Número del cliente (puede ser from o from_user_id)
+      const to = message.to; // Número de WhatsApp Business (puede no estar en pruebas)
       const timestamp = message.timestamp;
       const type = message.type;
 
-      // Buscar la campaña por el número de destino
-      const campaign = await this.getCampaignByNumber(to);
+      // Buscar la campaña por el número de destino primero
+      let campaign = to ? await this.getCampaignByNumber(to) : null;
+
+      // Si no se encuentra por número, intentar por Phone ID del metadata
+      if (!campaign && metadata?.phone_number_id) {
+        campaign = await this.getCampaignByPhoneId(metadata.phone_number_id);
+      }
+
       if (!campaign) {
-        return { ok: false, error: 'Campaña no encontrada para este número' };
+        return { ok: false, error: 'Campaña no encontrada para este número o Phone ID' };
+      }
+
+      // Extraer el número de teléfono real del contacto si está disponible
+      let realPhoneNumber = from;
+      if (contacts && contacts.length > 0) {
+        const contact = contacts[0];
+        if (contact.wa_id) {
+          realPhoneNumber = contact.wa_id;
+        } else if (contact.user_id) {
+          // Fallback: usar user_id si no hay wa_id
+          realPhoneNumber = contact.user_id;
+          console.log('⚠️ Usando user_id como número de teléfono (no ideal):', realPhoneNumber);
+        }
       }
 
       // Procesar según tipo de mensaje
       if (type === 'text') {
         const text = message.text.body;
-        return await this.handleTextMessage(from, to, text, campaign, timestamp);
+        return await this.handleTextMessage(realPhoneNumber, to, text, campaign, timestamp);
       }
 
       // Otros tipos: image, audio, video, document, etc.
@@ -134,12 +167,16 @@ class WhatsAppService {
         if (existing.length > 0) {
           // Actualizar conversación existente
           conversationId = existing[0].id;
+          
+          // Si ya tiene asesor asignado, mantener estado 'atendida', si no, 'activa'
+          const estadoConversacion = existing[0].asesor_id ? 'atendida' : 'activa';
+          
           await connection.query(
             `UPDATE conversaciones
-             SET estado_conversacion = 'activa',
+             SET estado_conversacion = ?,
                  fecha_actualizacion = NOW()
              WHERE id = ?`,
-            [conversationId]
+            [estadoConversacion, conversationId]
           );
         } else {
           // Crear nueva conversación - usar cliente_id 18 (Cliente Prueba)
@@ -150,6 +187,18 @@ class WhatsAppService {
             [campaign.cliente_panel_id, campaign.id, from]
           );
           conversationId = result.insertId;
+
+          // Asignar automáticamente un asesor disponible
+          const advisorId = await this.assignAvailableAdvisor();
+          if (advisorId) {
+            await connection.query(
+              `UPDATE conversaciones 
+               SET asesor_id = ?, fecha_asignacion = NOW() 
+               WHERE id = ?`,
+              [advisorId, conversationId]
+            );
+            console.log(`✅ Conversación ${conversationId} asignada al asesor ${advisorId}`);
+          }
         }
 
         // Insertar mensaje - usando campos correctos del esquema actual
@@ -181,6 +230,39 @@ class WhatsAppService {
     console.log('Status update:', status);
     // Por ahora solo logueamos, luego se puede implementar tracking
     return { ok: true, message: 'Status procesado' };
+  }
+
+  // Asignar automáticamente un asesor disponible
+  async assignAvailableAdvisor() {
+    try {
+      // Buscar asesores disponibles (estado = 'disponible')
+      const [advisors] = await pool.query(
+        `SELECT id, nombre FROM asesores
+         WHERE estado = 'disponible'
+         AND id NOT IN (SELECT DISTINCT asesor_id FROM conversaciones WHERE estado_conversacion = 'activa' AND asesor_id IS NOT NULL)
+         ORDER BY CASE WHEN last_assigned_at IS NULL THEN 0 ELSE 1 END, last_assigned_at ASC
+         LIMIT 1`
+      );
+
+      if (advisors.length === 0) {
+        console.log('⚠️ No hay asesores disponibles');
+        return null;
+      }
+
+      const advisor = advisors[0];
+
+      // Actualizar last_assigned_at para round-robin
+      await pool.query(
+        `UPDATE asesores SET last_assigned_at = NOW() WHERE id = ?`,
+        [advisor.id]
+      );
+
+      console.log(`✅ Asesor asignado automáticamente: ${advisor.nombre} (ID: ${advisor.id})`);
+      return advisor.id;
+    } catch (error) {
+      console.error('Error asignando asesor:', error);
+      return null;
+    }
   }
 
   // Enviar mensaje a través de WhatsApp API (usando credenciales globales del .env)
