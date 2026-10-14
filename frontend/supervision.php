@@ -1016,7 +1016,7 @@ footer {
     <div class="pagehead">
       <div>
         <h1 id="heading">Resumen de atención</h1>
-        <div class="subtitle" id="subtitle">Indicadores actualizados desde MySQL y eventos en tiempo real.</div>
+        <div class="subtitle" id="subtitle">Indicadores actualizados desde la base de datos y eventos en tiempo real.</div>
       </div>
     </div>
 
@@ -1617,7 +1617,7 @@ document.querySelectorAll(".nav").forEach(button => {
     const view = button.dataset.view;
     $("heading").textContent = view === "Resumen" ? "Resumen de atención" : view;
     $("subtitle").textContent = {
-      "Resumen": "Indicadores actualizados desde MySQL y eventos en tiempo real.",
+      "Resumen": "Indicadores actualizados desde la base de datos y eventos en tiempo real.",
       "Conversaciones": "Últimas conversaciones y su estado actual.",
       "Cola de atención": "Clientes pendientes de asignación de asesor.",
       "Asesores": "Disponibilidad y carga del equipo comercial.",
