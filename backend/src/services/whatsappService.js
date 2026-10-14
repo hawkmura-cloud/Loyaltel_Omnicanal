@@ -11,7 +11,7 @@ class WhatsAppService {
   async getCampaignByNumber(numero) {
     try {
       const [rows] = await pool.query(
-        'SELECT * FROM campañas_whatsapp WHERE numero_whatsapp = ? AND activo = TRUE',
+        'SELECT * FROM campanas_whatsapp WHERE numero_whatsapp = ? AND activo = TRUE',
         [numero]
       );
       return rows[0] || null;
@@ -25,7 +25,7 @@ class WhatsAppService {
   async getCampaignByPhoneId(phoneId) {
     try {
       const [rows] = await pool.query(
-        'SELECT * FROM campañas_whatsapp WHERE phone_id = ? AND activo = TRUE',
+        'SELECT * FROM campanas_whatsapp WHERE phone_id = ? AND activo = TRUE',
         [phoneId]
       );
       return rows[0] || null;
@@ -39,7 +39,7 @@ class WhatsAppService {
   async getCampaignById(id) {
     try {
       const [rows] = await pool.query(
-        'SELECT * FROM campañas_whatsapp WHERE id = ?',
+        'SELECT * FROM campanas_whatsapp WHERE id = ?',
         [id]
       );
       return rows[0] || null;
@@ -132,7 +132,7 @@ class WhatsAppService {
       // Procesar según tipo de mensaje
       if (type === 'text') {
         const text = message.text.body;
-        return await this.handleTextMessage(realPhoneNumber, to, text, campaign, timestamp);
+        return await this.handleTextMessage(realPhoneNumber, to, text, campaign, timestamp, contacts);
       }
 
       // Otros tipos: image, audio, video, document, etc.
@@ -145,7 +145,7 @@ class WhatsAppService {
   }
 
   // Manejar mensaje de texto - crear o actualizar conversación
-  async handleTextMessage(from, to, text, campaign, timestamp) {
+  async handleTextMessage(from, to, text, campaign, timestamp, contacts = []) {
     try {
       const connection = await pool.getConnection();
 
@@ -160,7 +160,7 @@ class WhatsAppService {
            AND estado_conversacion != 'finalizada'
            ORDER BY fecha_inicio DESC
            LIMIT 1`,
-          [from, campaign.id]
+          [`+${from}`, campaign.id]
         );
 
         let conversationId;
@@ -180,14 +180,29 @@ class WhatsAppService {
             [estadoConversacion, conversationId]
           );
         } else {
-          // Crear nueva conversación - usar cliente_id 18 (Cliente Prueba)
+          // Crear cliente primero si no existe
+          const [clienteResult] = await connection.query(
+            `INSERT INTO clientes (telefono, nombre) VALUES (?, ?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)`,
+            [`+${from}`, contacts[0]?.profile?.name || 'Cliente WhatsApp']
+          );
+          const clienteId = clienteResult.insertId;
+
+          // Crear nueva conversación
           const [result] = await connection.query(
             `INSERT INTO conversaciones
              (cliente_id, cliente_panel_id, campanas_whatsapp_id, telefono_whatsapp, estado_conversacion, fecha_inicio, fecha_actualizacion)
-             VALUES (18, ?, ?, ?, 'esperando_asesor', NOW(), NOW())`,
-            [campaign.cliente_panel_id, campaign.id, from]
+             VALUES (?, ?, ?, ?, 'esperando_asesor', NOW(), NOW())`,
+            [clienteId, campaign.cliente_panel_id, campaign.id, from]
           );
           conversationId = result.insertId;
+
+          // Insertar mensaje para la nueva conversación
+          await connection.query(
+            `INSERT INTO mensajes
+             (conversacion_id, remitente, mensaje, fecha, origen_mensaje)
+             VALUES (?, 'cliente', ?, FROM_UNIXTIME(?), 'sistema')`,
+            [conversationId, text, timestamp]
+          );
 
           // Agregar a la cola de espera
           await connection.commit(); // Commit para usar agregarACola que usa pool independiente

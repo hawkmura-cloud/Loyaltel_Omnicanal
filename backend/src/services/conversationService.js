@@ -53,7 +53,7 @@ async function obtenerOCrearCliente(telefono) {
 // OBTENER O CREAR CONVERSACIÓN
 // ======================================================
 
-async function obtenerOCrearConversacion(clienteId) {
+async function obtenerOCrearConversacion(clienteId, telefono = null) {
 
     // Buscamos la última conversación que todavía
     // no haya sido finalizada.
@@ -96,25 +96,25 @@ async function obtenerOCrearConversacion(clienteId) {
         `INSERT INTO conversaciones
         (
             cliente_id,
-            estado,
+            telefono_whatsapp,
             bot_activo,
             estado_conversacion
         )
         VALUES (
             ?,
-            'inicio',
+            ?,
             TRUE,
             'activa'
         )`,
 
-        [clienteId]
+        [clienteId, telefono || '']
 
     );
 
     const nuevaConversacion = {
         id: resultado.insertId,
         cliente_id: clienteId,
-        estado: "inicio",
+        telefono_whatsapp: telefono,
         bot_activo: true,
         estado_conversacion: "activa"
     };
@@ -142,7 +142,7 @@ async function actualizarEstadoConversacion(
     await pool.query(
 
         `UPDATE conversaciones
-         SET estado = ?
+         SET estado_conversacion = ?
          WHERE id = ?`,
 
         [

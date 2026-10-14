@@ -492,11 +492,11 @@ app.delete("/api/usuarios/:id", authenticateToken, requireSuperAdmin, async (req
 // ======================================================
 
 // Obtener todas las campañas de WhatsApp
-app.get("/api/campañas_whatsapp", authenticateToken, requireSuperAdmin, async (req, res) => {
+app.get("/api/campanas_whatsapp", authenticateToken, requireSuperAdmin, async (req, res) => {
     try {
         const [campañas] = await pool.query(`
             SELECT c.*, cp.nombre as cliente_nombre
-            FROM campañas_whatsapp c
+            FROM campanas_whatsapp c
             INNER JOIN clientes_panel cp ON c.cliente_panel_id = cp.id
             ORDER BY cp.nombre, c.nombre
         `);
@@ -508,7 +508,7 @@ app.get("/api/campañas_whatsapp", authenticateToken, requireSuperAdmin, async (
 });
 
 // Crear nueva campaña de WhatsApp
-app.post("/api/campañas_whatsapp", authenticateToken, requireSuperAdmin, async (req, res) => {
+app.post("/api/campanas_whatsapp", authenticateToken, requireSuperAdmin, async (req, res) => {
     try {
         const { cliente_panel_id, nombre, descripcion, numero_whatsapp, api_key, phone_id, access_token, webhook_url, webhook_secret } = req.body;
 
@@ -520,7 +520,7 @@ app.post("/api/campañas_whatsapp", authenticateToken, requireSuperAdmin, async 
         }
 
         const [result] = await pool.query(
-            `INSERT INTO campañas_whatsapp (cliente_panel_id, nombre, descripcion, numero_whatsapp, api_key, phone_id, access_token, webhook_url, webhook_secret, activo)
+            `INSERT INTO campanas_whatsapp (cliente_panel_id, nombre, descripcion, numero_whatsapp, api_key, phone_id, access_token, webhook_url, webhook_secret, activo)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)`,
             [cliente_panel_id, nombre, descripcion, numero_whatsapp, api_key || null, phone_id || null, access_token || null, webhook_url || null, webhook_secret || null]
         );
@@ -536,13 +536,13 @@ app.post("/api/campañas_whatsapp", authenticateToken, requireSuperAdmin, async 
 });
 
 // Actualizar campaña de WhatsApp
-app.put("/api/campañas_whatsapp/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
+app.put("/api/campanas_whatsapp/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { nombre, descripcion, numero_whatsapp, api_key, phone_id, access_token, webhook_url, webhook_secret, activo } = req.body;
 
         const [result] = await pool.query(
-            `UPDATE campañas_whatsapp
+            `UPDATE campanas_whatsapp
              SET nombre = ?, descripcion = ?, numero_whatsapp = ?, api_key = ?, phone_id = ?, access_token = ?, webhook_url = ?, webhook_secret = ?, activo = ?
              WHERE id = ?`,
             [nombre, descripcion, numero_whatsapp, api_key, phone_id, access_token, webhook_url, webhook_secret, activo, id]
@@ -563,7 +563,7 @@ app.put("/api/campañas_whatsapp/:id", authenticateToken, requireSuperAdmin, asy
 });
 
 // Eliminar campaña de WhatsApp
-app.delete("/api/campañas_whatsapp/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
+app.delete("/api/campanas_whatsapp/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -581,7 +581,7 @@ app.delete("/api/campañas_whatsapp/:id", authenticateToken, requireSuperAdmin, 
         }
 
         const [result] = await pool.query(
-            'DELETE FROM campañas_whatsapp WHERE id = ?',
+            'DELETE FROM campanas_whatsapp WHERE id = ?',
             [id]
         );
 
@@ -802,7 +802,7 @@ app.post("/api/importar/whatsapp", authenticateToken, requireSuperAdmin, async (
 
         // Obtener información de la campaña
         const [campañas] = await pool.query(
-            'SELECT * FROM campañas_whatsapp WHERE id = ?',
+            'SELECT * FROM campanas_whatsapp WHERE id = ?',
             [campaña_id]
         );
 
@@ -996,7 +996,7 @@ app.post("/api/chat", async (req, res) => {
         // --------------------------------------------------
 
         const conversacion =
-            await obtenerOCrearConversacion(cliente.id);
+            await obtenerOCrearConversacion(cliente.id, telefono);
 
 
         // --------------------------------------------------
@@ -1011,175 +1011,26 @@ app.post("/api/chat", async (req, res) => {
 
 
         // --------------------------------------------------
-        // SI EL BOT ESTÁ DESACTIVADO
-        // --------------------------------------------------
-
-        if (!conversacion.bot_activo) {
-
-            let mensaje = "";
-
-            if (conversacion.estado_conversacion === "esperando_asesor") {
-                mensaje = "Tu solicitud está registrada y te atenderemos en cuanto un asesor quede disponible.";
-            } else if (conversacion.estado_conversacion === "atendida") {
-                mensaje = "Tu conversación está asignada a un asesor. En breve continuará la atención.";
-            } else {
-                mensaje = "La conversación está siendo atendida por un asesor.";
-            }
-
-            return res.json({
-
-                conversacion_id: conversacion.id,
-
-                cliente_id: cliente.id,
-
-                estado: conversacion.estado,
-                bot_activo: false,
-
-                mensaje: mensaje
-
-            });
-
-        }
-
-
-        // --------------------------------------------------
-        // GUARDAR DATOS DEL CLIENTE SEGÚN EL ESTADO ACTUAL
-        // --------------------------------------------------
-
-        if (conversacion.estado === "distrito") {
-
-            await actualizarDatosCliente(
-                cliente.id,
-                {
-                    distrito: mensaje.trim()
-                }
-            );
-
-        }
-
-
-        if (conversacion.estado === "direccion") {
-
-            await actualizarDatosCliente(
-                cliente.id,
-                {
-                    direccion: mensaje.trim()
-                }
-            );
-
-        }
-
-
-        if (conversacion.estado === "nombre") {
-
-            await actualizarDatosCliente(
-                cliente.id,
-                {
-                    nombre: mensaje.trim()
-                }
-            );
-
-        }
-
-
-        // --------------------------------------------------
-        // PROCESAR MENSAJE CON EL MOTOR DEL BOT
-        // --------------------------------------------------
-
-        const resultado = procesarMensaje(
-            mensaje,
-            conversacion.estado
-        );
-
-
-        // ==================================================
-        // TRANSFERENCIA A ASESOR
-        // ==================================================
-
-     
-        // ==================================================
-        // TRANSFERENCIA A ASESOR
-        // ==================================================
-
-        if (
-            conversacion.estado === "menu" &&
-            (
-                mensaje.trim() === "5" ||
-                mensaje.trim().toLowerCase() === "asesor"
-            )
-        ) {
-            const asesor = await obtenerAsesorDisponible();
-
-            let asignacionCorrecta = false;
-
-            if (asesor) {
-                asignacionCorrecta = await asignarAsesor(
-                    conversacion.id,
-                    asesor.id
-                );
-            }
-
-            if (asignacionCorrecta) {
-                resultado.estado = "asesor";
-
-                resultado.respuesta =
-                    `👨‍💼 ¡Perfecto!
-
-Te estamos conectando con un asesor comercial.
-
-👤 Tu solicitud ha sido asignada a:
-${asesor.nombre}
-
-⏳ En unos momentos continuará la atención contigo.`;
-            } else {
-                await agregarACola(conversacion.id);
-
-                resultado.estado = "esperando_asesor";
-
-                resultado.respuesta =
-                    `👨‍💼 En este momento todos nuestros asesores están atendiendo otras conversaciones.
-
-⏳ Hemos registrado tu solicitud y te atenderemos en cuanto un asesor quede disponible.
-
-Gracias por tu paciencia. ❤️`;
-            }
-        }
-
-
-        // --------------------------------------------------
-        // ACTUALIZAR ESTADO DE LA CONVERSACIÓN
-        // --------------------------------------------------
-
-        await actualizarEstadoConversacion(
-            conversacion.id,
-            resultado.estado
-        );
-
-
-        // --------------------------------------------------
-        // GUARDAR RESPUESTA DEL BOT
-        // --------------------------------------------------
-
-        await guardarMensaje(
-            conversacion.id,
-            "bot",
-            resultado.respuesta
-        );
-
-
-        // --------------------------------------------------
         // RESPUESTA AL CLIENTE
         // --------------------------------------------------
 
-       
-res.json({
-    conversacion_id: conversacion.id,
-    cliente_id: cliente.id,
-    estado: resultado.estado,
-    bot_activo: resultado.estado !== "asesor" &&
-                resultado.estado !== "esperando_asesor",
-    respuesta: resultado.respuesta
-});
+        let respuesta = "";
+
+        if (conversacion.estado_conversacion === "esperando_asesor") {
+            respuesta = "Tu solicitud está registrada y te atenderemos en cuanto un asesor quede disponible.";
+        } else if (conversacion.estado_conversacion === "atendida") {
+            respuesta = "Tu conversación está asignada a un asesor. En breve continuará la atención.";
+        } else {
+            respuesta = "Mensaje recibido. Te atenderemos pronto.";
+        }
+
+        res.json({
+            conversacion_id: conversacion.id,
+            cliente_id: cliente.id,
+            estado_conversacion: conversacion.estado_conversacion,
+            bot_activo: conversacion.bot_activo,
+            respuesta: respuesta
+        });
 
 
 
@@ -1932,14 +1783,13 @@ app.get("/api/panel/resumen", authenticateToken, requireSupervisor, async (req, 
             pool.query(`
                 SELECT
                     c.id AS conversacion_id,
-               
+
 COALESCE(
     NULLIF(TRIM(cl.nombre), ''),
     CONCAT('Cliente ', c.telefono_whatsapp)
 ) AS cliente,
 
                     c.telefono_whatsapp AS telefono,
-                    c.estado,
                     c.estado_conversacion,
                     c.asesor_id,
                     a.nombre AS asesor,
@@ -2046,8 +1896,6 @@ app.get("/api/asesor/:id/conversaciones", authenticateToken, requireAsesorOrSelf
                 ) AS cliente,
                 c.telefono_whatsapp AS telefono,
                 cl.nombre AS nombre_completo,
-                cl.distrito,
-                c.estado,
                 c.estado_conversacion,
                 c.fecha_inicio,
                 c.fecha_actualizacion,

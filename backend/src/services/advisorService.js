@@ -32,7 +32,7 @@ async function asignarAsesor(conversacionId, asesorId) {
     try {
         await connection.beginTransaction();
 
-        // Asignar la conversación al asesor (sin cambiar estado del asesor)
+        // Asignar la conversación al asesor y cambiar estado del asesor a ocupado
         const [conversaciones] = await connection.query(
            `UPDATE conversaciones
  SET asesor_id = ?,
@@ -48,6 +48,14 @@ async function asignarAsesor(conversacionId, asesorId) {
             await connection.rollback();
             return false;
         }
+
+        // Cambiar estado del asesor a ocupado
+        await connection.query(
+            `UPDATE asesores
+             SET estado = 'ocupado'
+             WHERE id = ?`,
+            [asesorId]
+        );
 
         // Marcar la solicitud en cola como atendida, si existe.
         await connection.query(
@@ -73,6 +81,12 @@ async function asignarAsesor(conversacionId, asesorId) {
         enviarEventoATodos("asesor_asignado", {
             conversacion_id: conversacionId,
             asesor_id: asesorId
+        });
+
+        // Enviar evento SSE de cambio de estado del asesor
+        enviarEventoATodos("asesor_estado_cambiado", {
+            asesor_id: asesorId,
+            estado_nuevo: 'ocupado'
         });
 
         return true;
