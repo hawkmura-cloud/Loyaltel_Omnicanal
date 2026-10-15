@@ -973,7 +973,7 @@ footer {
 <div class="layout">
   <aside>
     <div class="nav-label">Panel Operativo</div>
-    <button class="nav active" data-view="Resumen">
+    <button class="nav active" data-view="Resumen" onclick="switchView('Resumen')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <rect x="3" y="3" width="7" height="7"></rect>
         <rect x="14" y="3" width="7" height="7"></rect>
@@ -982,20 +982,20 @@ footer {
       </svg>
       Resumen
     </button>
-    <button class="nav" data-view="Conversaciones">
+    <button class="nav" data-view="Conversaciones" onclick="switchView('Conversaciones')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
       </svg>
       Conversaciones
     </button>
-    <button class="nav" data-view="Cola de atención">
+    <button class="nav" data-view="Cola de atención" onclick="switchView('Cola de atención')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10"></circle>
         <polyline points="12 6 12 12 16 14"></polyline>
       </svg>
       Cola de atención
     </button>
-    <button class="nav" data-view="Asesores">
+    <button class="nav" data-view="Asesores" onclick="switchView('Asesores')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
         <circle cx="9" cy="7" r="4"></circle>
@@ -1004,7 +1004,7 @@ footer {
       </svg>
       Asesores
     </button>
-    <button class="nav" data-view="Reportes">
+    <button class="nav" data-view="Reportes" onclick="switchView('Reportes')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <line x1="18" y1="20" x2="18" y2="10"></line>
         <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -1028,7 +1028,7 @@ footer {
     </div>
 
     <!-- CARDS KPI -->
-    <section class="cards">
+    <section class="cards" id="cardsResumen">
       <div class="metric">
         <div class="metric-top">
           <span>Conversaciones activas</span>
@@ -1079,10 +1079,10 @@ footer {
     </section>
 
     <!-- COLUMNAS -->
-    <div class="columns">
+    <div class="columns" id="panelsResumen">
       <div>
         <!-- PANEL ASESORES -->
-        <section class="panel" id="advisorPanel">
+        <section class="panel" id="advisorPanel" data-view="Asesores">
           <div class="panel-head">
             <div>
               <div class="panel-title">Estado del equipo de asesores</div>
@@ -1106,7 +1106,7 @@ footer {
         </section>
 
         <!-- PANEL CONVERSACIONES -->
-        <section class="panel" id="conversationPanel">
+        <section class="panel" id="conversationPanel" data-view="Conversaciones">
           <div class="panel-head">
             <div>
               <div class="panel-title">Conversaciones recientes</div>
@@ -1133,7 +1133,7 @@ footer {
 
       <div>
         <!-- PANEL COLA -->
-        <section class="panel" id="queuePanel">
+        <section class="panel" id="queuePanel" data-view="Cola de atención">
           <div class="panel-head">
             <div>
               <div class="panel-title">Cola de espera</div>
@@ -1144,14 +1144,22 @@ footer {
             <div class="empty">Consultando cola...</div>
           </div>
         </section>
+      </div>
+    </div>
 
+    <!-- COLUMNAS PARA REPORTES -->
+    <div class="columns" id="panelsReportes" style="display: none;">
+      <div style="width: 100%;">
         <!-- PANEL REPORTES -->
-        <section class="panel reports-section" id="reportsPanel" hidden>
+        <section class="panel reports-section" id="reportsPanel" data-view="Reportes">
           <div class="panel-head">
             <div>
               <div class="panel-title">Reportes comerciales</div>
               <div class="panel-sub">Métricas de desempeño y tiempos de respuesta</div>
             </div>
+            <button class="btn btn-primary" onclick="exportarClientesExcel()" style="margin-left: auto;">
+              📊 Exportar Clientes (Excel)
+            </button>
           </div>
           <div class="report-cards">
             <div class="metric" style="padding:14px;">
@@ -1194,12 +1202,51 @@ footer {
               </table>
             </div>
           </div>
-        </section>
 
-        <div class="notice">
-          <strong>⚡ Actualización en tiempo real:</strong> Los datos se actualizan automáticamente vía Server-Sent Events (SSE) y con respaldo cada 15 segundos.
-        </div>
+          <div class="report-table">
+            <div class="panel-title" style="padding:0 0 10px 0; font-size:13px;">Reporte Completo de Clientes</div>
+            <div class="table-wrap" style="max-height: 500px; overflow-y: auto;">
+              <table style="font-size: 11px;">
+                <thead>
+                  <tr>
+                    <th>Mes</th>
+                    <th>Fecha</th>
+                    <th>Canal</th>
+                    <th>Estado</th>
+                    <th>Tipificación</th>
+                    <th>Número</th>
+                    <th>Operador</th>
+                    <th>Asesor</th>
+                    <th>DNI</th>
+                    <th>Nombre</th>
+                    <th>Rango Crédito</th>
+                    <th>Dirección</th>
+                    <th>Distrito</th>
+                    <th>Provincia</th>
+                    <th>Departamento</th>
+                    <th>Plan</th>
+                    <th>Campaña</th>
+                    <th>Precio</th>
+                    <th>Plano</th>
+                    <th>Observaciones</th>
+                    <th>ID</th>
+                    <th>SOT</th>
+                    <th>Fecha Instalación</th>
+                  </tr>
+                </thead>
+                <tbody id="reportClientesCompletos">
+                  <tr><td colspan="23" class="empty">Cargando datos...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
       </div>
+    </div>
+
+    <div class="notice" id="noticeResumen">
+      <strong>⚡ Actualización en tiempo real:</strong> Los datos se actualizan automáticamente vía Server-Sent Events (SSE) y con respaldo cada 15 segundos.
+    </div>
     </div>
 
     <!-- MODAL HISTORIAL -->
@@ -1387,6 +1434,73 @@ function escapeHTML(value) {
   })[char]);
 }
 
+function switchView(view) {
+  // Actualizar estado activo de navegación
+  document.querySelectorAll('.nav').forEach(btn => btn.classList.remove('active'));
+  const activeBtn = document.querySelector(`[data-view="${view}"]`);
+  if (activeBtn) activeBtn.classList.add('active');
+
+  // Ocultar todos los paneles y contenedores
+  $('cardsResumen').style.display = 'none';
+  $('panelsResumen').style.display = 'none';
+  $('panelsReportes').style.display = 'none';
+  $('noticeResumen').style.display = 'none';
+
+  // Mostrar según la vista seleccionada
+  if (view === 'Reportes') {
+    $('panelsReportes').style.display = 'block';
+    $('heading').textContent = 'Reportes comerciales';
+    $('subtitle').textContent = 'Métricas de desempeño y reportes de clientes';
+    cargarReportes();
+  } else if (view === 'Resumen') {
+    $('cardsResumen').style.display = 'block';
+    $('panelsResumen').style.display = 'block';
+    $('noticeResumen').style.display = 'block';
+    $('heading').textContent = 'Resumen de atención';
+    $('subtitle').textContent = 'Indicadores actualizados desde la base de datos y eventos en tiempo real.';
+    cargarResumen();
+  } else if (view === 'Conversaciones') {
+    $('panelsResumen').style.display = 'block';
+    $('noticeResumen').style.display = 'block';
+    $('heading').textContent = 'Conversaciones recientes';
+    $('subtitle').textContent = 'Registro de actividad y atención en curso';
+    // Ocultar panel de asesores y cola, mostrar conversaciones
+    document.querySelectorAll('#panelsResumen .panel').forEach(panel => {
+      if (panel.id === 'conversationPanel') {
+        panel.style.display = 'block';
+      } else {
+        panel.style.display = 'none';
+      }
+    });
+  } else if (view === 'Cola de atención') {
+    $('panelsResumen').style.display = 'block';
+    $('noticeResumen').style.display = 'block';
+    $('heading').textContent = 'Cola de espera';
+    $('subtitle').textContent = 'Clientes aguardando respuesta de asesor';
+    // Ocultar otros paneles, mostrar cola
+    document.querySelectorAll('#panelsResumen .panel').forEach(panel => {
+      if (panel.id === 'queuePanel') {
+        panel.style.display = 'block';
+      } else {
+        panel.style.display = 'none';
+      }
+    });
+  } else if (view === 'Asesores') {
+    $('panelsResumen').style.display = 'block';
+    $('noticeResumen').style.display = 'block';
+    $('heading').textContent = 'Estado del equipo';
+    $('subtitle').textContent = 'Disponibilidad en vivo y carga de chats';
+    // Ocultar otros paneles, mostrar asesores
+    document.querySelectorAll('#panelsResumen .panel').forEach(panel => {
+      if (panel.id === 'advisorPanel') {
+        panel.style.display = 'block';
+      } else {
+        panel.style.display = 'none';
+      }
+    });
+  }
+}
+
 function estadoAsesor(estado) {
   const map = {
     disponible: ["Disponible", "available"],
@@ -1521,8 +1635,75 @@ async function cargarReportes() {
         `).join("")
         : '<tr><td colspan="3" class="empty">No hay datos por asesor</td></tr>';
     }
+
+    // Cargar reporte completo de clientes
+    await cargarReporteClientesCompletos();
   } catch (error) {
     console.error("Error cargando reportes:", error);
+  }
+}
+
+async function cargarReporteClientesCompletos() {
+  try {
+    const response = await authenticatedFetch(`${API_BASE}/reportes/clientes`);
+    const data = await response.json();
+
+    if (data.ok) {
+      $("reportClientesCompletos").innerHTML = data.clientes.length
+        ? data.clientes.map(c => `
+          <tr>
+            <td>${escapeHTML(c.mes || '')}</td>
+            <td>${escapeHTML(c.fecha ? c.fecha.split('T')[0] : '')}</td>
+            <td>${escapeHTML(c.canal || '')}</td>
+            <td>${escapeHTML(c.estado || '')}</td>
+            <td>${escapeHTML(c.tipificacion_redes || '')}</td>
+            <td>${escapeHTML(c.numero || '')}</td>
+            <td>${escapeHTML(c.operador || '')}</td>
+            <td>${escapeHTML(c.asesor || '')}</td>
+            <td>${escapeHTML(c.dni || '')}</td>
+            <td>${escapeHTML(c.nombre || '')}</td>
+            <td>${escapeHTML(c.rango_crediticio || '')}</td>
+            <td>${escapeHTML(c.direccion || '')}</td>
+            <td>${escapeHTML(c.distrito || '')}</td>
+            <td>${escapeHTML(c.provincia || '')}</td>
+            <td>${escapeHTML(c.departamento || '')}</td>
+            <td>${escapeHTML(c.plan || '')}</td>
+            <td>${escapeHTML(c.campaña || '')}</td>
+            <td>${escapeHTML(c.precio || '')}</td>
+            <td>${escapeHTML(c.plano || '')}</td>
+            <td>${escapeHTML(c.observaciones || '')}</td>
+            <td>${escapeHTML(c.id || '')}</td>
+            <td>${escapeHTML(c.sot || '')}</td>
+            <td>${escapeHTML(c.fecha_instalacion ? c.fecha_instalacion.split('T')[0] : '')}</td>
+          </tr>
+        `).join("")
+        : '<tr><td colspan="23" class="empty">No hay datos de clientes</td></tr>';
+    }
+  } catch (error) {
+    console.error("Error cargando reporte completo de clientes:", error);
+  }
+}
+
+async function exportarClientesExcel() {
+  try {
+    const response = await authenticatedFetch(`${API_BASE}/reportes/clientes?formato=excel`);
+    
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `reporte_clientes_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } else {
+      alert('Error al generar el reporte Excel');
+    }
+  } catch (error) {
+    console.error("Error exportando clientes:", error);
+    alert('Error al exportar el reporte');
   }
 }
 

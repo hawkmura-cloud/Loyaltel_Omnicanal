@@ -2,7 +2,25 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const ExcelJS = require('exceljs');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 require("dotenv").config();
+
+// Configuración de multer para subir archivos
+const upload = multer({
+    dest: 'uploads/',
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    fileFilter: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (ext === '.xlsx' || ext === '.xls') {
+            cb(null, true);
+        } else {
+            cb(new Error('Solo se permiten archivos Excel (.xlsx, .xls)'));
+        }
+    }
+});
 
 const { procesarMensaje } = require("./src/bot/bot");
 const pool = require("./src/config/database");
@@ -510,7 +528,7 @@ app.get("/api/campanas_whatsapp", authenticateToken, requireSuperAdmin, async (r
 // Crear nueva campaña de WhatsApp
 app.post("/api/campanas_whatsapp", authenticateToken, requireSuperAdmin, async (req, res) => {
     try {
-        const { cliente_panel_id, nombre, descripcion, numero_whatsapp, api_key, phone_id, access_token, webhook_url, webhook_secret } = req.body;
+        const { cliente_panel_id, nombre, canal, descripcion, numero_whatsapp, api_key, phone_id, access_token, webhook_url, webhook_secret } = req.body;
 
         if (!cliente_panel_id || !nombre || !numero_whatsapp) {
             return res.status(400).json({
@@ -520,9 +538,9 @@ app.post("/api/campanas_whatsapp", authenticateToken, requireSuperAdmin, async (
         }
 
         const [result] = await pool.query(
-            `INSERT INTO campanas_whatsapp (cliente_panel_id, nombre, descripcion, numero_whatsapp, api_key, phone_id, access_token, webhook_url, webhook_secret, activo)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)`,
-            [cliente_panel_id, nombre, descripcion, numero_whatsapp, api_key || null, phone_id || null, access_token || null, webhook_url || null, webhook_secret || null]
+            `INSERT INTO campanas_whatsapp (cliente_panel_id, nombre, canal, descripcion, numero_whatsapp, api_key, phone_id, access_token, webhook_url, webhook_secret, activo)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)`,
+            [cliente_panel_id, nombre, canal || 'FAJU', descripcion, numero_whatsapp, api_key || null, phone_id || null, access_token || null, webhook_url || null, webhook_secret || null]
         );
 
         res.json({
@@ -539,13 +557,13 @@ app.post("/api/campanas_whatsapp", authenticateToken, requireSuperAdmin, async (
 app.put("/api/campanas_whatsapp/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { nombre, descripcion, numero_whatsapp, api_key, phone_id, access_token, webhook_url, webhook_secret, activo } = req.body;
+        const { nombre, canal, descripcion, numero_whatsapp, api_key, phone_id, access_token, webhook_url, webhook_secret, activo } = req.body;
 
         const [result] = await pool.query(
             `UPDATE campanas_whatsapp
-             SET nombre = ?, descripcion = ?, numero_whatsapp = ?, api_key = ?, phone_id = ?, access_token = ?, webhook_url = ?, webhook_secret = ?, activo = ?
+             SET nombre = ?, canal = ?, descripcion = ?, numero_whatsapp = ?, api_key = ?, phone_id = ?, access_token = ?, webhook_url = ?, webhook_secret = ?, activo = ?
              WHERE id = ?`,
-            [nombre, descripcion, numero_whatsapp, api_key, phone_id, access_token, webhook_url, webhook_secret, activo, id]
+            [nombre, canal, descripcion, numero_whatsapp, api_key, phone_id, access_token, webhook_url, webhook_secret, activo, id]
         );
 
         if (result.affectedRows === 0) {
@@ -2253,6 +2271,414 @@ app.get("/api/conversaciones/:id/historial", authenticateToken, async (req, res)
             ok: false,
             error: "No se pudo obtener el historial"
         });
+    }
+});
+
+
+// ======================================================
+// REPORTES DE CLIENTES CON EXPORTACIÓN EXCEL
+// ======================================================
+
+app.get("/api/reportes/clientes", authenticateToken, requireSupervisor, async (req, res) => {
+    try {
+        const { formato } = req.query;
+
+        if (formato === 'excel') {
+            // Generar reporte Excel con estructura del archivo REDES LEADS
+            const [clientes] = await pool.query(`
+                SELECT 
+                    DATE_FORMAT(c.fecha_registro, '%Y-%m') AS mes,
+                    DATE(c.fecha_registro) AS fecha,
+                    cw.canal AS canal,
+                    c.estado_comercial AS estado,
+                    c.tipificacion_redes AS tipificacion_redes,
+                    c.telefono AS numero,
+                    c.operador AS operador,
+                    a.nombre AS asesor,
+                    c.dni,
+                    c.nombre AS nombre,
+                    c.rango_crediticio AS rango_crediticio,
+                    c.direccion,
+                    c.distrito,
+                    c.provincia,
+                    c.departamento,
+                    c.plan_asignado AS plan,
+                    c.campania AS campaña,
+                    c.precio,
+                    c.plano,
+                    c.observaciones,
+                    c.id,
+                    c.sot,
+                    c.fecha_instalacion AS fecha_instalacion
+                FROM clientes c
+                LEFT JOIN conversaciones conv ON c.id = conv.cliente_id
+                LEFT JOIN campanas_whatsapp cw ON conv.campanas_whatsapp_id = cw.id
+                LEFT JOIN clientes_panel cpanel ON cw.cliente_panel_id = cpanel.id
+                LEFT JOIN asesores a ON conv.asesor_id = a.id
+                WHERE c.fecha_registro IS NOT NULL
+                ORDER BY c.fecha_registro DESC
+            `);
+
+            // Crear workbook de Excel
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('REDES LEADS');
+
+            // Definir columnas según estructura del Excel original
+            worksheet.columns = [
+                { header: 'MES', key: 'mes', width: 12 },
+                { header: 'FECHA', key: 'fecha', width: 12 },
+                { header: 'CANAL', key: 'canal', width: 12 },
+                { header: 'ESTADO', key: 'estado', width: 15 },
+                { header: 'TIPIFICACION DE REDES', key: 'tipificacion_redes', width: 25 },
+                { header: 'NUMERO', key: 'numero', width: 15 },
+                { header: 'OPERADOR', key: 'operador', width: 15 },
+                { header: 'ASESOR', key: 'asesor', width: 20 },
+                { header: 'DNI', key: 'dni', width: 15 },
+                { header: 'NOMBRE', key: 'nombre', width: 25 },
+                { header: 'RANGO CREDITICIO', key: 'rango_crediticio', width: 20 },
+                { header: 'DIRECCION', key: 'direccion', width: 30 },
+                { header: 'DISTRITO', key: 'distrito', width: 20 },
+                { header: 'PROVINCIA', key: 'provincia', width: 20 },
+                { header: 'DEPARTAMENTO', key: 'departamento', width: 20 },
+                { header: 'PLAN', key: 'plan', width: 20 },
+                { header: 'CAMPAÑA', key: 'campaña', width: 20 },
+                { header: 'PRECIO', key: 'precio', width: 12 },
+                { header: 'PLANO', key: 'plano', width: 15 },
+                { header: 'OBSERVACIONES', key: 'observaciones', width: 40 },
+                { header: 'ID', key: 'id', width: 10 },
+                { header: 'SOT', key: 'sot', width: 12 },
+                { header: 'FECHA INSTALACIÓN', key: 'fecha_instalacion', width: 18 }
+            ];
+
+            // Agregar datos
+            worksheet.addRows(clientes);
+
+            // Estilos de encabezado
+            worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            worksheet.getRow(1).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF4472C4' }
+            };
+            worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+            // Generar buffer
+            const buffer = await workbook.xlsx.writeBuffer();
+
+            // Enviar archivo
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=REDES_LEADS.xlsx');
+            res.send(buffer);
+        } else {
+            // Retornar JSON normal
+            const [clientes] = await pool.query(`
+                SELECT 
+                    DATE_FORMAT(c.fecha_registro, '%Y-%m') AS mes,
+                    DATE(c.fecha_registro) AS fecha,
+                    cw.canal AS canal,
+                    c.estado_comercial AS estado,
+                    c.tipificacion_redes AS tipificacion_redes,
+                    c.telefono AS numero,
+                    c.operador AS operador,
+                    a.nombre AS asesor,
+                    c.dni,
+                    c.nombre AS nombre,
+                    c.rango_crediticio AS rango_crediticio,
+                    c.direccion,
+                    c.distrito,
+                    c.provincia,
+                    c.departamento,
+                    c.plan_asignado AS plan,
+                    c.campania AS campaña,
+                    c.precio,
+                    c.plano,
+                    c.observaciones,
+                    c.id,
+                    c.sot,
+                    c.fecha_instalacion AS fecha_instalacion
+                FROM clientes c
+                LEFT JOIN conversaciones conv ON c.id = conv.cliente_id
+                LEFT JOIN campanas_whatsapp cw ON conv.campanas_whatsapp_id = cw.id
+                LEFT JOIN clientes_panel cpanel ON cw.cliente_panel_id = cpanel.id
+                LEFT JOIN asesores a ON conv.asesor_id = a.id
+                WHERE c.fecha_registro IS NOT NULL
+                ORDER BY c.fecha_registro DESC
+            `);
+
+            res.json({ ok: true, clientes });
+        }
+    } catch (error) {
+        console.error("Error generando reporte de clientes:", error);
+        res.status(500).json({ ok: false, error: "Error interno del servidor" });
+    }
+});
+
+
+// ======================================================
+// IMPORTAR CLIENTES DESDE EXCEL (SOLO SUPERADMIN)
+// ======================================================
+
+app.post("/api/importar/clientes", authenticateToken, requireSuperAdmin, upload.single('archivo'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                ok: false,
+                error: "No se ha subido ningún archivo"
+            });
+        }
+
+        const filePath = req.file.path;
+        const workbook = new ExcelJS.Workbook();
+        
+        try {
+            await workbook.xlsx.readFile(filePath);
+        } catch (readError) {
+            fs.unlinkSync(filePath);
+            return res.status(400).json({
+                ok: false,
+                error: "Error al leer el archivo Excel: " + readError.message
+            });
+        }
+
+        const worksheet = workbook.worksheets[0];
+        const clientes = [];
+        let errores = [];
+
+        if (!worksheet) {
+            fs.unlinkSync(filePath);
+            return res.status(400).json({
+                ok: false,
+                error: "El archivo no tiene hojas de trabajo"
+            });
+        }
+
+        // Leer filas de forma segura
+        const rowCount = worksheet.rowCount;
+        
+        for (let rowNumber = 2; rowNumber <= rowCount; rowNumber++) {
+            try {
+                const row = worksheet.getRow(rowNumber);
+                
+                // Obtener valores de celdas específicas de forma segura
+                const getCellValue = (col) => {
+                    try {
+                        const cell = row.getCell(col);
+                        return cell && cell.value !== undefined ? cell.value : null;
+                    } catch (e) {
+                        return null;
+                    }
+                };
+
+                const cliente = {
+                    nombre: getCellValue(10) || '',
+                    telefono: getCellValue(6) ? String(getCellValue(6)) : '',
+                    dni: getCellValue(9) ? String(getCellValue(9)) : null,
+                    operador: getCellValue(7) || null,
+                    estado_comercial: getCellValue(4) || null,
+                    tipificacion_redes: getCellValue(5) || null,
+                    rango_crediticio: getCellValue(11) || null,
+                    direccion: getCellValue(12) || null,
+                    distrito: getCellValue(13) || null,
+                    provincia: getCellValue(14) || null,
+                    departamento: getCellValue(15) || null,
+                    plan_asignado: getCellValue(16) || null,
+                    campania: getCellValue(17) || null,
+                    precio: getCellValue(18) || null,
+                    plano: getCellValue(19) || null,
+                    observaciones: getCellValue(20) || null,
+                    sot: getCellValue(22) ? String(getCellValue(22)) : null,
+                    fecha_instalacion: getCellValue(23) || null,
+                    origen: 'IMPORTACION_EXCEL'
+                };
+
+                // Validar campos requeridos
+                if (!cliente.nombre || !cliente.telefono) {
+                    errores.push(`Fila ${rowNumber}: Nombre y teléfono son requeridos`);
+                    continue;
+                }
+
+                clientes.push(cliente);
+            } catch (error) {
+                console.error(`Error procesando fila ${rowNumber}:`, error);
+                errores.push(`Fila ${rowNumber}: Error al procesar - ${error.message}`);
+            }
+        }
+
+        // Eliminar archivo temporal
+        fs.unlinkSync(filePath);
+
+        if (clientes.length === 0) {
+            return res.status(400).json({
+                ok: false,
+                error: "No se encontraron datos válidos en el archivo"
+            });
+        }
+
+        // Insertar clientes en base de datos
+        let insertados = 0;
+        let duplicados = 0;
+
+        for (const cliente of clientes) {
+            try {
+                // Verificar si ya existe por teléfono
+                const [existentes] = await pool.query(
+                    'SELECT id FROM clientes WHERE telefono = ?',
+                    [cliente.telefono]
+                );
+
+                if (existentes.length > 0) {
+                    duplicados++;
+                    continue;
+                }
+
+                await pool.query(
+                    `INSERT INTO clientes (nombre, telefono, dni, operador, estado_comercial, tipificacion_redes, 
+                     rango_crediticio, direccion, distrito, provincia, departamento, plan_asignado, campania, 
+                     precio, plano, observaciones, sot, fecha_instalacion, origen, fecha_registro)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+                    [
+                        cliente.nombre,
+                        cliente.telefono,
+                        cliente.dni,
+                        cliente.operador,
+                        cliente.estado_comercial,
+                        cliente.tipificacion_redes,
+                        cliente.rango_crediticio,
+                        cliente.direccion,
+                        cliente.distrito,
+                        cliente.provincia,
+                        cliente.departamento,
+                        cliente.plan_asignado,
+                        cliente.campania,
+                        cliente.precio,
+                        cliente.plano,
+                        cliente.observaciones,
+                        cliente.sot,
+                        cliente.fecha_instalacion,
+                        cliente.origen
+                    ]
+                );
+                insertados++;
+            } catch (error) {
+                console.error(`Error insertando cliente ${cliente.telefono}:`, error);
+                errores.push(`Error insertando cliente ${cliente.telefono}: ${error.message}`);
+            }
+        }
+
+        res.json({
+            ok: true,
+            mensaje: "Importación completada",
+            insertados,
+            duplicados,
+            errores: errores.length > 0 ? errores : undefined
+        });
+    } catch (error) {
+        console.error("Error importando clientes:", error);
+        
+        // Limpiar archivo temporal si existe
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+
+        res.status(500).json({
+            ok: false,
+            error: "Error interno del servidor: " + error.message
+        });
+    }
+});
+
+
+// ======================================================
+// DESCARGAR PLANTILLA EXCEL PARA IMPORTACIÓN
+// ======================================================
+
+app.get("/api/plantilla/clientes", authenticateToken, requireSuperAdmin, async (req, res) => {
+    try {
+        // Crear workbook de Excel con estructura de REDES LEADS
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('REDES LEADS');
+
+        // Definir columnas según estructura del Excel original
+        worksheet.columns = [
+            { header: 'MES', key: 'mes', width: 12 },
+            { header: 'FECHA', key: 'fecha', width: 12 },
+            { header: 'CANAL', key: 'canal', width: 12 },
+            { header: 'ESTADO', key: 'estado', width: 15 },
+            { header: 'TIPIFICACION DE REDES', key: 'tipificacion_redes', width: 25 },
+            { header: 'NUMERO', key: 'numero', width: 15 },
+            { header: 'OPERADOR', key: 'operador', width: 15 },
+            { header: 'ASESOR', key: 'asesor', width: 20 },
+            { header: 'DNI', key: 'dni', width: 15 },
+            { header: 'NOMBRE', key: 'nombre', width: 25 },
+            { header: 'RANGO CREDITICIO', key: 'rango_crediticio', width: 20 },
+            { header: 'DIRECCION', key: 'direccion', width: 30 },
+            { header: 'DISTRITO', key: 'distrito', width: 20 },
+            { header: 'PROVINCIA', key: 'provincia', width: 20 },
+            { header: 'DEPARTAMENTO', key: 'departamento', width: 20 },
+            { header: 'PLAN', key: 'plan', width: 20 },
+            { header: 'CAMPAÑA', key: 'campaña', width: 20 },
+            { header: 'PRECIO', key: 'precio', width: 12 },
+            { header: 'PLANO', key: 'plano', width: 15 },
+            { header: 'OBSERVACIONES', key: 'observaciones', width: 40 },
+            { header: 'ID', key: 'id', width: 10 },
+            { header: 'SOT', key: 'sot', width: 12 },
+            { header: 'FECHA INSTALACIÓN', key: 'fecha_instalacion', width: 18 }
+        ];
+
+        // Agregar fila de ejemplo
+        worksheet.addRow({
+            mes: '2026-10',
+            fecha: '2026-10-15',
+            canal: 'FAJU',
+            estado: 'En proceso',
+            tipificacion_redes: 'Nueva venta',
+            numero: '51999999999',
+            operador: 'Claro',
+            asesor: 'Juan Pérez',
+            dni: '12345678',
+            nombre: 'Cliente Ejemplo',
+            rango_crediticio: 'B',
+            direccion: 'Av. Principal 123',
+            distrito: 'San Borja',
+            provincia: 'Lima',
+            departamento: 'Lima',
+            plan: 'Internet 100 Mbps',
+            campaña: 'Venta Hogar',
+            precio: '99.90',
+            plano: 'P001',
+            observaciones: 'Cliente interesado',
+            id: '',
+            sot: 'SOT12345',
+            fecha_instalacion: '2026-10-20'
+        });
+
+        // Estilos de encabezado
+        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        worksheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF4472C4' }
+        };
+        worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+        // Agregar instrucciones
+        const instructions = worksheet.addRow([]);
+        worksheet.mergeCells('A' + (worksheet.rowCount) + ':W' + (worksheet.rowCount));
+        const instructionCell = worksheet.getCell('A' + (worksheet.rowCount));
+        instructionCell.value = 'INSTRUCCIONES: Rellene los datos necesarios. Los campos obligatorios son: NOMBRE y NUMERO. Borre la fila de ejemplo antes de importar.';
+        instructionCell.font = { italic: true, color: { argb: 'FFC00000' } };
+        instructionCell.alignment = { wrapText: true, vertical: 'top' };
+
+        // Generar buffer
+        const buffer = await workbook.xlsx.writeBuffer();
+
+        // Enviar archivo
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=PLANTILLA_CLIENTES.xlsx');
+        res.send(buffer);
+    } catch (error) {
+        console.error("Error generando plantilla:", error);
+        res.status(500).json({ ok: false, error: "Error interno del servidor" });
     }
 });
 

@@ -1840,11 +1840,23 @@ function renderClientCard(cliente) {
   const fields = [
     { label: "Nombre", value: cliente.nombre, editable: true, field: 'nombre' },
     { label: "Teléfono", value: cliente.telefono, editable: false, field: 'telefono' },
+    { label: "DNI", value: cliente.dni, editable: true, field: 'dni' },
+    { label: "Operador", value: cliente.operador, editable: true, field: 'operador' },
+    { label: "Estado Comercial", value: cliente.estado_comercial, editable: true, field: 'estado_comercial' },
+    { label: "Tipificación Redes", value: cliente.tipificacion_redes, editable: true, field: 'tipificacion_redes' },
+    { label: "Rango Crediticio", value: cliente.rango_crediticio, editable: true, field: 'rango_crediticio' },
     { label: "Distrito", value: cliente.distrito, editable: true, field: 'distrito' },
     { label: "Dirección", value: cliente.direccion, editable: true, field: 'direccion' },
+    { label: "Departamento", value: cliente.departamento, editable: true, field: 'departamento' },
+    { label: "Provincia", value: cliente.provincia, editable: true, field: 'provincia' },
     { label: "Origen", value: cliente.origen, editable: true, field: 'origen' },
     { label: "Campaña", value: cliente.campania, editable: true, field: 'campania' },
     { label: "Producto de interés", value: cliente.producto_interes, editable: true, field: 'producto_interes' },
+    { label: "Plan Asignado", value: cliente.plan_asignado, editable: true, field: 'plan_asignado' },
+    { label: "Precio", value: cliente.precio, editable: true, field: 'precio' },
+    { label: "Plano", value: cliente.plano, editable: true, field: 'plano' },
+    { label: "SOT", value: cliente.sot, editable: true, field: 'sot' },
+    { label: "Fecha Instalación", value: cliente.fecha_instalacion, editable: true, field: 'fecha_instalacion' },
     { label: "Observaciones", value: cliente.observaciones, editable: true, field: 'observaciones' }
   ];
 

@@ -569,6 +569,7 @@ body {
           <div style="display:flex; gap:10px;">
             <button class="btn btn-new" onclick="openCampaignModal()">+ Nueva Campaña</button>
             <button class="btn btn-new" onclick="openImportModal()" style="background:#059669;">📥 Importar Conversaciones</button>
+            <button class="btn btn-new" onclick="openImportClientesModal()" style="background:#7c3aed;">📊 Importar Clientes Excel</button>
           </div>
         </div>
 
@@ -675,6 +676,27 @@ body {
   </div>
 </div>
 
+<!-- MODAL IMPORTAR CLIENTES EXCEL -->
+<div class="modal" id="importClientesModal">
+  <div class="modal-content" style="max-width: 560px;">
+    <h3>Importar Clientes desde Excel</h3>
+    <p style="font-size: 13px; color: var(--muted); margin-bottom: 15px;">
+      Importa clientes desde un archivo Excel. Primero descarga la plantilla, llénala y luego súbela.
+    </p>
+    <div style="margin-bottom: 15px;">
+      <button class="btn btn-new" onclick="descargarPlantilla()" style="background:#7c3aed; width: 100%;">
+        📥 Descargar Plantilla Excel
+      </button>
+    </div>
+    <label style="font-size:12px; font-weight:700; color:var(--muted);">Archivo Excel (.xlsx)</label>
+    <input type="file" id="importClientesFile" accept=".xlsx,.xls" style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 15px;">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeImportClientesModal()">Cancelar</button>
+      <button class="btn-save" onclick="importarClientesExcel()" style="background:#059669;">Importar Clientes</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CAMPAÑA -->
 <div class="modal" id="campaignModal">
   <div class="modal-content" style="max-width: 560px; max-height:90vh; overflow-y:auto;">
@@ -686,6 +708,11 @@ body {
     </select>
     <label style="font-size:12px; font-weight:700; color:var(--muted);">Nombre de la campaña</label>
     <input type="text" id="campaignNombre" placeholder="Ej: Claro Ventas Hogar">
+    <label style="font-size:12px; font-weight:700; color:var(--muted);">Canal</label>
+    <select id="campaignCanal">
+      <option value="FAJU">FAJU</option>
+      <option value="LENGUA">LENGUA</option>
+    </select>
     <label style="font-size:12px; font-weight:700; color:var(--muted);">Descripción</label>
     <input type="text" id="campaignDesc" placeholder="Descripción de la campaña">
     <label style="font-size:12px; font-weight:700; color:var(--muted);">Número de WhatsApp Business</label>
@@ -1276,6 +1303,7 @@ function openCampaignModal(isEdit = false) {
     $('campaignId').value = '';
     $('campaignCliente').value = '';
     $('campaignNombre').value = '';
+    $('campaignCanal').value = 'FAJU';
     $('campaignDesc').value = '';
     $('campaignNumero').value = '';
     $('campaignApiKey').value = '';
@@ -1291,11 +1319,81 @@ function closeCampaignModal() {
   $('campaignModal').classList.remove('active');
 }
 
+function openImportClientesModal() {
+  $('importClientesModal').classList.add('active');
+}
+
+function closeImportClientesModal() {
+  $('importClientesModal').classList.remove('active');
+  $('importClientesFile').value = '';
+}
+
+async function descargarPlantilla() {
+  try {
+    const res = await fetch(`${API_BASE}/plantilla/clientes`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (res.ok) {
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'PLANTILLA_CLIENTES.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } else {
+      alert('Error al descargar la plantilla');
+    }
+  } catch (err) {
+    console.error('Error descargando plantilla:', err);
+    alert('Error de conexión al descargar la plantilla');
+  }
+}
+
+async function importarClientesExcel() {
+  const fileInput = $('importClientesFile');
+  const file = fileInput.files[0];
+
+  if (!file) {
+    alert('Por favor selecciona un archivo Excel');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('archivo', file);
+
+  try {
+    const res = await fetch(`${API_BASE}/importar/clientes`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (data.ok) {
+      alert(`Importación completada:\n- Insertados: ${data.insertados}\n- Duplicados: ${data.duplicados}${data.errores ? '\n- Errores: ' + data.errores.length : ''}`);
+      closeImportClientesModal();
+    } else {
+      alert('Error: ' + data.error);
+    }
+  } catch (err) {
+    console.error('Error importando clientes:', err);
+    alert('Error de conexión al importar clientes');
+  }
+}
+
 async function saveCampaign() {
   const campaignId = $('campaignId').value;
   const campaignData = {
     cliente_panel_id: $('campaignCliente').value,
     nombre: $('campaignNombre').value.trim(),
+    canal: $('campaignCanal').value,
     descripcion: $('campaignDesc').value.trim(),
     numero_whatsapp: $('campaignNumero').value.trim(),
     api_key: $('campaignApiKey').value.trim(),

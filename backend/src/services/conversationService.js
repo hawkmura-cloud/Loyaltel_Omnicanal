@@ -313,6 +313,210 @@ async function actualizarDatosCliente(
 
 
     // --------------------------------------------------
+    // DNI
+    // --------------------------------------------------
+
+    if (datos.dni !== undefined) {
+
+        campos.push(
+            "dni = ?"
+        );
+
+        valores.push(
+            datos.dni
+        );
+
+    }
+
+
+    // --------------------------------------------------
+    // OPERADOR
+    // --------------------------------------------------
+
+    if (datos.operador !== undefined) {
+
+        campos.push(
+            "operador = ?"
+        );
+
+        valores.push(
+            datos.operador
+        );
+
+    }
+
+
+    // --------------------------------------------------
+    // ESTADO COMERCIAL
+    // --------------------------------------------------
+
+    if (datos.estado_comercial !== undefined) {
+
+        campos.push(
+            "estado_comercial = ?"
+        );
+
+        valores.push(
+            datos.estado_comercial
+        );
+
+    }
+
+
+    // --------------------------------------------------
+    // TIPIFICACIÓN DE REDES
+    // --------------------------------------------------
+
+    if (datos.tipificacion_redes !== undefined) {
+
+        campos.push(
+            "tipificacion_redes = ?"
+        );
+
+        valores.push(
+            datos.tipificacion_redes
+        );
+
+    }
+
+
+    // --------------------------------------------------
+    // RANGO CREDITICIO
+    // --------------------------------------------------
+
+    if (datos.rango_crediticio !== undefined) {
+
+        campos.push(
+            "rango_crediticio = ?"
+        );
+
+        valores.push(
+            datos.rango_crediticio
+        );
+
+    }
+
+
+    // --------------------------------------------------
+    // DEPARTAMENTO
+    // --------------------------------------------------
+
+    if (datos.departamento !== undefined) {
+
+        campos.push(
+            "departamento = ?"
+        );
+
+        valores.push(
+            datos.departamento
+        );
+
+    }
+
+
+    // --------------------------------------------------
+    // PROVINCIA
+    // --------------------------------------------------
+
+    if (datos.provincia !== undefined) {
+
+        campos.push(
+            "provincia = ?"
+        );
+
+        valores.push(
+            datos.provincia
+        );
+
+    }
+
+
+    // --------------------------------------------------
+    // PLAN ASIGNADO
+    // --------------------------------------------------
+
+    if (datos.plan_asignado !== undefined) {
+
+        campos.push(
+            "plan_asignado = ?"
+        );
+
+        valores.push(
+            datos.plan_asignado
+        );
+
+    }
+
+
+    // --------------------------------------------------
+    // PRECIO
+    // --------------------------------------------------
+
+    if (datos.precio !== undefined) {
+
+        campos.push(
+            "precio = ?"
+        );
+
+        valores.push(
+            datos.precio
+        );
+
+    }
+
+
+    // --------------------------------------------------
+    // PLANO
+    // --------------------------------------------------
+
+    if (datos.plano !== undefined) {
+
+        campos.push(
+            "plano = ?"
+        );
+
+        valores.push(
+            datos.plano
+        );
+
+    }
+
+
+    // --------------------------------------------------
+    // SOT
+    // --------------------------------------------------
+
+    if (datos.sot !== undefined) {
+
+        campos.push(
+            "sot = ?"
+        );
+
+        valores.push(
+            datos.sot
+        );
+
+    }
+
+
+    // --------------------------------------------------
+    // FECHA INSTALACIÓN
+    // --------------------------------------------------
+
+    if (datos.fecha_instalacion !== undefined) {
+
+        campos.push(
+            "fecha_instalacion = ?"
+        );
+
+        valores.push(
+            datos.fecha_instalacion
+        );
+
+    }
+
+
+    // --------------------------------------------------
     // OBSERVACIONES
     // --------------------------------------------------
 
