@@ -453,6 +453,20 @@ header {
   animation: pulse-ring 2s infinite;
 }
 
+.finalizada-badge {
+  background: var(--muted);
+  color: white;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-weight: 600;
+  font-size: 10px;
+}
+
+.conversation-item.finalizada {
+  opacity: 0.7;
+  background: rgba(100, 116, 139, 0.05);
+}
+
 /* CHAT AREA */
 main {
   padding: 20px 24px;
@@ -584,6 +598,17 @@ main {
 
 .btn-finish:hover {
   background: var(--danger);
+  color: white;
+}
+
+.btn-reactivate {
+  background: var(--success-light);
+  color: var(--success-text);
+  border: 1px solid var(--success-border);
+}
+
+.btn-reactivate:hover {
+  background: var(--success);
   color: white;
 }
 
@@ -1348,6 +1373,15 @@ main {
             </svg>
             Finalizar
           </button>
+
+          <button class="chat-btn btn-reactivate" id="reactivateConversationBtn" hidden onclick="reactivateConversation()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"></path>
+              <path d="M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Reactivar
+          </button>
         </div>
       </div>
 
@@ -1692,12 +1726,17 @@ function renderConversations(conversations) {
       ? `<span class="pending-badge">${c.mensajes_pendientes}</span>`
       : '';
 
+    const isFinalizada = c.estado_conversacion === 'finalizada';
+    const finalizadaBadge = isFinalizada
+      ? `<span class="finalizada-badge">Finalizada</span>`
+      : '';
+
     const initial = (c.cliente || c.telefono || 'C').charAt(0).toUpperCase();
 
     const isActive = currentConversation === Number(c.conversacion_id);
 
     return `
-      <div class="conversation-item ${isActive ? 'active' : ''}" data-id="${c.conversacion_id}" data-phone="${escapeHTML(c.telefono)}" data-name="${escapeHTML(c.cliente || c.telefono)}">
+      <div class="conversation-item ${isActive ? 'active' : ''} ${isFinalizada ? 'finalizada' : ''}" data-id="${c.conversacion_id}" data-phone="${escapeHTML(c.telefono)}" data-name="${escapeHTML(c.cliente || c.telefono)}" data-estado="${escapeHTML(c.estado_conversacion)}">
         <div class="conversation-avatar">${escapeHTML(initial)}</div>
         <div class="conversation-content">
           <div class="conversation-header">
@@ -1711,6 +1750,7 @@ function renderConversations(conversations) {
               <span>●</span> WhatsApp
             </span>
             ${pendingBadge}
+            ${finalizadaBadge}
           </div>
         </div>
       </div>
@@ -1722,7 +1762,8 @@ function renderConversations(conversations) {
       openConversation(
         Number(item.dataset.id),
         item.dataset.phone,
-        item.dataset.name
+        item.dataset.name,
+        item.dataset.estado
       );
     });
   });
@@ -1732,7 +1773,7 @@ function renderConversations(conversations) {
 // ABRIR CONVERSACIÓN
 // ======================================================
 
-async function openConversation(conversationId, telefono, clientName) {
+async function openConversation(conversationId, telefono, clientName, estado) {
   currentConversation = conversationId;
 
   // Resaltar conversación activa
@@ -1740,15 +1781,17 @@ async function openConversation(conversationId, telefono, clientName) {
     item.classList.toggle("active", Number(item.dataset.id) === conversationId);
   });
 
+  // Ocultar tarjeta del cliente anterior
+  $("clientCard").hidden = true;
+
   // Mostrar header del chat
   $("chatHeader").hidden = false;
-  $("chatInput").hidden = false;
   $("chatClientName").textContent = clientName || "Cliente";
   $("chatClientPhone").innerHTML = `
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
     </svg>
-    <span>${escapeHTML(telefono)}</span>
+    <span data-phone="${escapeHTML(telefono)}">${escapeHTML(telefono)}</span>
   `;
   if ($("chatHeaderAvatar")) {
     $("chatHeaderAvatar").textContent = (clientName || "C").charAt(0).toUpperCase();
@@ -1764,10 +1807,26 @@ async function openConversation(conversationId, telefono, clientName) {
     if (data.ok) {
       renderMessages(data.mensajes);
       loadClientData(telefono);
+
+      // Verificar si la conversación está finalizada usando el estado del parámetro
+      const isFinalizada = estado === 'finalizada';
+
+      if (isFinalizada) {
+        $("chatInput").hidden = true;
+        $("finishConversationBtn").hidden = true;
+        $("reactivateConversationBtn").hidden = false;
+      } else {
+        $("chatInput").hidden = false;
+        $("finishConversationBtn").hidden = false;
+        $("reactivateConversationBtn").hidden = true;
+      }
+    } else {
+      console.error("Error en respuesta:", data);
+      $("chatMessages").innerHTML = '<div class="empty-state">Error al cargar mensajes: ' + (data.error || 'Desconocido') + '</div>';
     }
   } catch (error) {
     console.error("Error cargando mensajes:", error);
-    $("chatMessages").innerHTML = '<div class="empty-state">Error al cargar mensajes</div>';
+    $("chatMessages").innerHTML = '<div class="empty-state">Error al cargar mensajes: ' + error.message + '</div>';
   }
 }
 
@@ -1816,10 +1875,21 @@ function renderMessages(messages) {
 // CARGAR DATOS DEL CLIENTE
 // ======================================================
 
+let currentTelefono = null;
+
 async function loadClientData(telefono) {
+  currentTelefono = telefono;
+
   try {
-    const response = await authenticatedFetch(`${API_BASE}/clientes/${telefono}`);
+    // Codificar el teléfono para el URL (el signo + causa problemas)
+    const telefonoEncoded = encodeURIComponent(telefono);
+    const response = await authenticatedFetch(`${API_BASE}/clientes/${telefonoEncoded}`);
     const data = await response.json();
+
+    // Verificar que la conversación no haya cambiado mientras se cargaba
+    if (currentTelefono !== telefono) {
+      return;
+    }
 
     if (data.ok) {
       const cliente = data.cliente;
@@ -1830,6 +1900,8 @@ async function loadClientData(telefono) {
         }
       }
       renderClientCard(cliente);
+    } else {
+      console.error("Error del backend:", data.error);
     }
   } catch (error) {
     console.error("Error cargando datos del cliente:", error);
@@ -1878,6 +1950,9 @@ function renderClientCard(cliente) {
     </button>
   `;
 
+  // Mostrar la tarjeta del cliente
+  $("clientCard").removeAttribute("hidden");
+
   // Agregar evento de edición
   $("editClientBtn").addEventListener("click", enableClientEditing);
 }
@@ -1906,7 +1981,8 @@ function enableClientEditing() {
 }
 
 async function saveClientData() {
-  const telefono = $("chatClientPhone").textContent.trim();
+  const phoneSpan = $("chatClientPhone").querySelector("span[data-phone]");
+  const telefono = phoneSpan ? phoneSpan.dataset.phone : "";
   const updates = {};
 
   document.querySelectorAll(".edit-input").forEach(input => {
@@ -1914,7 +1990,8 @@ async function saveClientData() {
   });
 
   try {
-    const response = await authenticatedFetch(`${API_BASE}/clientes/${telefono}`, {
+    const telefonoEncoded = encodeURIComponent(telefono);
+    const response = await authenticatedFetch(`${API_BASE}/clientes/${telefonoEncoded}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates)
@@ -2108,10 +2185,10 @@ $("finishConversationBtn").addEventListener("click", async () => {
 
     if (data.ok) {
       alert("Conversación finalizada correctamente");
-      currentConversation = null;
-      $("chatHeader").hidden = true;
+      // No ocultar el chat, solo deshabilitar el input
       $("chatInput").hidden = true;
-      $("chatMessages").innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div>Conversación finalizada. Selecciona otra conversación para continuar.</div>';
+      $("finishConversationBtn").hidden = true;
+      $("reactivateConversationBtn").hidden = false;
       loadConversations();
     } else {
       alert("Error: " + data.error);
@@ -2123,14 +2200,75 @@ $("finishConversationBtn").addEventListener("click", async () => {
 });
 
 // ======================================================
+// REACTIVAR CONVERSACIÓN
+// ======================================================
+
+async function reactivateConversation() {
+  if (!currentConversation) return;
+
+  if (!confirm("¿Estás seguro de reactivar esta conversación?")) return;
+
+  try {
+    const response = await authenticatedFetch(`${API_BASE}/conversaciones/${currentConversation}/reactivar`, {
+      method: "POST"
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      alert("Conversación reactivada correctamente");
+      $("chatInput").hidden = false;
+      $("finishConversationBtn").hidden = false;
+      $("reactivateConversationBtn").hidden = true;
+      loadConversations();
+
+      // Recargar la conversación actual para actualizar el estado
+      const phoneSpan = $("chatClientPhone").querySelector("span[data-phone]");
+      const telefono = phoneSpan ? phoneSpan.dataset.phone : "";
+      const clientName = $("chatClientName").textContent;
+      openConversation(currentConversation, telefono, clientName, 'atendida');
+    } else {
+      alert("Error: " + data.error);
+    }
+  } catch (error) {
+    console.error("Error reactivando conversación:", error);
+    alert("Error al reactivar conversación");
+  }
+}
+
+// ======================================================
 // FICHA DEL CLIENTE TOGGLE
 // ======================================================
 
 $("showClientCardBtn").addEventListener("click", () => {
-  $("clientCard").hidden = !$("clientCard").hidden;
+  console.log("Botón Ficha clickeado");
+  const isHidden = $("clientCard").hidden;
+  console.log("¿Tarjeta oculta?", isHidden);
+
+  if (isHidden) {
+    // Si está oculta, cargar datos y mostrar
+    const phoneElement = $("chatClientPhone");
+    console.log("Elemento teléfono:", phoneElement);
+    const phoneSpan = phoneElement ? phoneElement.querySelector("span[data-phone]") : null;
+    const telefono = phoneSpan ? phoneSpan.dataset.phone : "";
+    console.log("Teléfono extraído:", telefono);
+
+    if (telefono && telefono !== "—") {
+      console.log("Cargando datos del cliente...");
+      loadClientData(telefono);
+    } else {
+      console.log("No hay teléfono válido");
+      alert("No hay conversación seleccionada");
+    }
+  } else {
+    // Si está visible, ocultar
+    console.log("Ocultando tarjeta");
+    $("clientCard").hidden = true;
+  }
 });
 
 $("closeCardBtn").addEventListener("click", () => {
+  console.log("Botón cerrar clickeado");
   $("clientCard").hidden = true;
 });
 

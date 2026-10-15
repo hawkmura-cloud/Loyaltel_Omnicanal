@@ -1555,6 +1555,121 @@ app.post(
 
 
 // ======================================================
+// ENDPOINT PARA REACTIVAR UNA CONVERSACIÓN FINALIZADA
+// ======================================================
+
+app.post("/api/conversaciones/:id/reactivar", authenticateToken, async (req, res) => {
+    try {
+        const conversacionId = Number(req.params.id);
+        const asesorId = req.user.asesorId || req.user.id;
+
+        if (!Number.isInteger(conversacionId) || conversacionId <= 0) {
+            return res.status(400).json({
+                ok: false,
+                error: "ID de conversación inválido"
+            });
+        }
+
+        // Verificar que la conversación existe
+        const [conversaciones] = await pool.query(
+            `SELECT * FROM conversaciones WHERE id = ? LIMIT 1`,
+            [conversacionId]
+        );
+
+        if (conversaciones.length === 0) {
+            return res.status(404).json({
+                ok: false,
+                error: "Conversación no encontrada"
+            });
+        }
+
+        const conversacion = conversaciones[0];
+
+        // Verificar que la conversación está finalizada
+        if (conversacion.estado_conversacion !== "finalizada") {
+            return res.status(400).json({
+                ok: false,
+                error: "Solo se pueden reactivar conversaciones finalizadas"
+            });
+        }
+
+        // Si es asesor, verificar que la conversación esté asignada a él
+        if (req.user.rol === 'asesor' && conversacion.asesor_id !== asesorId) {
+            return res.status(403).json({
+                ok: false,
+                error: "No tienes permiso para reactivar esta conversación"
+            });
+        }
+
+        // Verificar que el asesor esté disponible
+        if (req.user.rol === 'asesor') {
+            const [asesores] = await pool.query(
+                `SELECT estado FROM asesores WHERE id = ? LIMIT 1`,
+                [asesorId]
+            );
+
+            if (asesores.length === 0) {
+                return res.status(404).json({
+                    ok: false,
+                    error: "Asesor no encontrado"
+                });
+            }
+
+            if (asesores[0].estado !== 'disponible') {
+                return res.status(400).json({
+                    ok: false,
+                    error: "El asesor debe estar disponible para reactivar una conversación"
+                });
+            }
+        }
+
+        // Reactivar la conversación (sin transacción para evitar locks)
+        await pool.query(
+            `UPDATE conversaciones
+             SET estado_conversacion = 'atendida',
+                 fecha_finalizacion = NULL,
+                 fecha_actualizacion = NOW()
+             WHERE id = ?`,
+            [conversacionId]
+        );
+
+        // Marcar el asesor como ocupado
+        if (conversacion.asesor_id) {
+            await pool.query(
+                `UPDATE asesores SET estado = 'ocupado' WHERE id = ?`,
+                [conversacion.asesor_id]
+            );
+        }
+
+        // Registrar actividad (sin transacción)
+        try {
+            await registrarActividad(
+                conversacionId,
+                'reactivacion',
+                conversacion.asesor_id,
+                `Conversación reactivada por asesor ${conversacion.asesor_id}`
+            );
+        } catch (activityError) {
+            console.error("Error registrando actividad (no crítico):", activityError);
+            // No fallar la reactivación si falla el registro de actividad
+        }
+
+        return res.json({
+            ok: true,
+            mensaje: "Conversación reactivada correctamente"
+        });
+
+    } catch (error) {
+        console.error("❌ Error reactivando conversación:", error);
+        return res.status(500).json({
+            ok: false,
+            error: "Error interno del servidor"
+        });
+    }
+});
+
+
+// ======================================================
 // ENDPOINT PARA QUE SUPERVISOR TOME UN CHAT DE LA COLA
 // ======================================================
 
@@ -1904,7 +2019,7 @@ app.get("/api/asesor/:id/conversaciones", authenticateToken, requireAsesorOrSelf
             });
         }
 
-        // Obtener conversaciones asignadas al asesor (activas y atendidas)
+        // Obtener conversaciones asignadas al asesor (activas, atendidas y finalizadas)
         const [conversaciones] = await pool.query(`
             SELECT
                 c.id AS conversacion_id,
@@ -1947,8 +2062,13 @@ app.get("/api/asesor/:id/conversaciones", authenticateToken, requireAsesorOrSelf
             INNER JOIN clientes cl
                 ON cl.id = c.cliente_id
             WHERE c.asesor_id = ?
-            AND c.estado_conversacion IN ('atendida', 'activa')
-            ORDER BY c.fecha_actualizacion DESC
+            AND c.estado_conversacion IN ('atendida', 'activa', 'finalizada')
+            ORDER BY
+                CASE
+                    WHEN c.estado_conversacion = 'finalizada' THEN 1
+                    ELSE 0
+                END,
+                c.fecha_actualizacion DESC
         `, [asesorId]);
 
         res.json({
@@ -2114,7 +2234,7 @@ app.get("/api/clientes/:telefono", authenticateToken, async (req, res) => {
 // API DEL ASESOR: ACTUALIZAR DATOS DEL CLIENTE
 // ======================================================
 
-app.put("/api/clientes/:telefono", async (req, res) => {
+app.put("/api/clientes/:telefono", authenticateToken, async (req, res) => {
     try {
         const telefono = req.params.telefono;
         const datos = req.body;
