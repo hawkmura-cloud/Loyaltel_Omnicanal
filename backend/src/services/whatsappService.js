@@ -1,6 +1,7 @@
 const axios = require('axios');
 const pool = require('../config/database');
 const { agregarACola, asignarSiguienteDeCola } = require('./advisorService');
+const { enviarEventoATodos } = require('../utils/sseEmitter');
 
 class WhatsAppService {
   constructor() {
@@ -228,6 +229,15 @@ class WhatsAppService {
         );
 
         await connection.commit();
+
+        // Enviar evento SSE para notificar al asesor en tiempo real
+        console.log(`📡 Enviando evento SSE para conversación ${conversationId}`);
+        enviarEventoATodos("nuevo_mensaje", {
+          conversacion_id: conversationId,
+          telefono: from,
+          mensaje: text
+        });
+        console.log(`✅ Evento SSE enviado para conversación ${conversationId}`);
 
         console.log(`✅ Mensaje procesado: Conversación ID ${conversationId}, de ${from}: "${text}"`);
         return { ok: true, conversationId, message: 'Mensaje procesado' };

@@ -2276,25 +2276,39 @@ $("closeCardBtn").addEventListener("click", () => {
 // SSE
 // ======================================================
 
+let pollingInterval = null;
+
 function connectSSE() {
-  if (eventSource) eventSource.close();
+  // Usar polling en lugar de SSE (SSE no funciona con Cloudflare/proxies)
+  console.log("Iniciando polling para actualizaciones...");
 
-  eventSource = new EventSource(`${API_BASE}/panel/sse?token=${authToken}`);
+  if (pollingInterval) clearInterval(pollingInterval);
 
-  eventSource.addEventListener("nuevo_mensaje", () => {
-    if (currentConversation) {
-      openConversation(currentConversation, $("chatClientPhone").textContent);
+  pollingInterval = setInterval(async () => {
+    try {
+      if (currentConversation) {
+        // Recargar mensajes de la conversación actual
+        const response = await authenticatedFetch(`${API_BASE}/conversaciones/${currentConversation}/mensajes`);
+        const data = await response.json();
+
+        if (data.ok) {
+          const currentMessages = document.querySelectorAll(".message");
+          const newMessageCount = data.mensajes.length;
+
+          // Si hay más mensajes que los mostrados, recargar
+          if (newMessageCount > currentMessages.length) {
+            console.log("📨 Nuevos mensajes detectados, recargando...");
+            renderMessages(data.mensajes);
+          }
+        }
+      }
+
+      // Recargar lista de conversaciones
+      loadConversations();
+    } catch (error) {
+      console.error("Error en polling:", error);
     }
-    loadConversations();
-  });
-
-  eventSource.addEventListener("asesor_estado_cambiado", (event) => {
-    const data = JSON.parse(event.data);
-    if (currentAsesor && data.asesor_id === currentAsesor.id) {
-      currentAsesor.estado = data.estado_nuevo;
-      updateStatusUI(data.estado_nuevo);
-    }
-  });
+  }, 3000); // Consultar cada 3 segundos
 }
 
 // ======================================================
